@@ -44,8 +44,13 @@ export type GenerateDtsOptions = {
 	 */
 	minify?: boolean
 	/**
-	 * Whether to use typescript native compiler for generating declaration files.
-	 * When enabled, you won't need explicit type annotations for exports (which are required by default when using isolated declarations).
+	 * When using isolated declarations, exports typically require explicit type annotations.
+	 *
+	 * When this option is enabled, TypeScript's compiler is used to generate declaration files,
+	 * which will automatically infer the types of exports, eliminating the need for explicit type annotations.
+	 *
+	 * This option is enabled by default if `isolatedDeclarations` is disabled or not specified
+	 * in your tsconfig.json's compilerOptions.
 	 */
 	inferTypes?: boolean
 }
