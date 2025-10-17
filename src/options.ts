@@ -50,6 +50,12 @@ export type GenerateDtsOptions = {
 	 * which will automatically infer the types of exports, eliminating the need for explicit type annotations.
 	 */
 	inferTypes?: boolean
+	/**
+	 * Whether to use TypeScript's native compiler (tsgo), 10x faster than the traditional TypeScript compiler (tsc).
+	 *
+	 * This is only applicable if you have the `dts.inferTypes` option enabled. Without this enabled, bunup uses TypeScript's isolated declarations mode by default, so any TypeScript compiler is not relevant in this case.
+	 */
+	tsgo?: boolean
 }
 
 export type GenerateDtsResultFile = {

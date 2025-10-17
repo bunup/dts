@@ -14,7 +14,7 @@ import type {
 } from './options'
 import { NODE_MODULES_RE } from './re'
 import { createResolver } from './resolver'
-import { runTsgo } from './tsgo'
+import { runTypescriptCompiler } from './typescript-compiler'
 import {
 	cleanPath,
 	deleteExtension,
@@ -68,7 +68,7 @@ export async function generateDts(
 		tsconfig: tsconfig.filepath,
 	})
 
-	let tsgoDist: string | undefined
+	let tsCompiledDist: string | undefined
 
 	try {
 		const fakeJsPlugin: BunPlugin = {
@@ -101,7 +101,11 @@ export async function generateDts(
 				})
 
 				if (options.inferTypes) {
-					tsgoDist = await runTsgo(cwd, tsconfig.filepath ?? undefined)
+					tsCompiledDist = await runTypescriptCompiler(
+						cwd,
+						!!options.tsgo,
+						tsconfig.filepath ?? undefined,
+					)
 				}
 
 				build.onLoad(
@@ -115,9 +119,9 @@ export async function generateDts(
 						if (NODE_MODULES_RE.test(args.path)) {
 							declaration = sourceText
 						} else {
-							if (options.inferTypes && tsgoDist) {
+							if (options.inferTypes && tsCompiledDist) {
 								const declarationPath = replaceExtension(
-									path.join(tsgoDist, args.path.replace(cwd, '')),
+									path.join(tsCompiledDist, args.path.replace(cwd, '')),
 									'.d.ts',
 								)
 
@@ -251,8 +255,8 @@ export async function generateDts(
 			errors: collectedErrors,
 		}
 	} finally {
-		if (tsgoDist) {
-			await rm(tsgoDist, { recursive: true, force: true })
+		if (tsCompiledDist) {
+			await rm(tsCompiledDist, { recursive: true, force: true })
 		}
 	}
 }

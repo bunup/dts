@@ -1,9 +1,10 @@
 import { generateDts } from './src'
 
 console.time('time')
-await generateDts(['src/index.ts'], {
+const result = await generateDts(['project/index.ts'], {
 	inferTypes: true,
+	tsgo: true,
 })
 console.timeEnd('time')
 
-// console.log(result.files[0].dts)
+console.log(result.files[0].dts)
