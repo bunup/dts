@@ -47,6 +47,7 @@ export async function loadTsConfig(
 		extensions: ['.json'],
 		preferredPath,
 		cwd,
+		maxDepth: 1,
 	})
 
 	return config
