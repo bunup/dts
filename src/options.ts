@@ -51,9 +51,13 @@ export type GenerateDtsOptions = {
 	 */
 	inferTypes?: boolean
 	/**
-	 * Whether to use TypeScript's native compiler (tsgo), 10x faster than the traditional TypeScript compiler (tsc).
+	 * Whether to use TypeScript's native compiler ([tsgo](https://devblogs.microsoft.com/typescript/typescript-native-port/)), 10x faster than the traditional TypeScript compiler (tsc).
 	 *
 	 * This is only applicable if you have the `dts.inferTypes` option enabled. Without this enabled, bunup uses TypeScript's isolated declarations mode by default, so any TypeScript compiler is not relevant in this case.
+	 *
+	 * Note: This option is experimental but much stable for declarations generation. Expected to be stable soon.
+	 *
+	 * Ensure `@typescript/native-preview` is installed as dev dependency: `bun add --dev @typescript/native-preview`
 	 */
 	tsgo?: boolean
 }
