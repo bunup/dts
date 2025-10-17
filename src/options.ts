@@ -48,9 +48,6 @@ export type GenerateDtsOptions = {
 	 *
 	 * When this option is enabled, TypeScript's compiler is used to generate declaration files,
 	 * which will automatically infer the types of exports, eliminating the need for explicit type annotations.
-	 *
-	 * This option is enabled by default if `isolatedDeclarations` is disabled or not specified
-	 * in your tsconfig.json's compilerOptions.
 	 */
 	inferTypes?: boolean
 }
