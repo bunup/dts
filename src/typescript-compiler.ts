@@ -27,6 +27,8 @@ export async function runTypescriptCompiler(
 		'false',
 		'--declaration',
 		'--emitDeclarationOnly',
+		'--isolatedDeclarations',
+		'false',
 		...(tsconfig ? ['-p', tsconfig] : []),
 		'--outDir',
 		dist,
@@ -35,7 +37,14 @@ export async function runTypescriptCompiler(
 		'--noCheck',
 	])
 
-	await proc.exited
+	const exitCode = await proc.exited
+
+	if (exitCode !== 0) {
+		const stderr = await new Response(proc.stdout).text()
+		throw new Error(
+			stderr || `TypeScript compiler failed with exit code ${exitCode}`,
+		)
+	}
 
 	return dist
 }
