@@ -1,7 +1,7 @@
 {
 	"name": "@bunup/dts",
-	"version": "0.14.21",
-	"description": "An extremely fast TypeScript declaration bundler built on Bun.",
+	"version": "0.14.22",
+	"description": "An extremely fast TypeScript declaration bundler built on Bun's native bundler.",
 	"homepage": "https://github.com/bunup/dts#readme",
 	"bugs": {
 		"url": "https://github.com/bunup/dts/issues"
