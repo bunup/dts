@@ -26,7 +26,7 @@
 		"ts-import-resolver": "^0.1.23"
 	},
 	"scripts": {
-		"build": "bunup",
+		"build": "bunup --exports --unused",
 		"dev": "bunup --watch",
 		"postinstall": "bun simple-git-hooks",
 		"lint": "biome check .",
