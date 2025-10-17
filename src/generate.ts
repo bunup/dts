@@ -38,6 +38,21 @@ export async function generateDts(
 
 	const tsconfig = await loadTsConfig(cwd, preferredTsconfig)
 
+	if (options.inferTypes && !tsconfig.filepath) {
+		throw new Error(
+			'The "inferTypes" option requires a tsconfig.json file. Please create a tsconfig.json file in your project root with at least a basic configuration:\n\n' +
+				'{\n' +
+				'  "compilerOptions": {\n' +
+				'    "target": "ESNext",\n' +
+				'    "module": "ESNext",\n' +
+				'    "moduleResolution": "bundler",\n' +
+				'    "declaration": true\n' +
+				'  }\n' +
+				'}\n\n' +
+				'Alternatively, you can specify a custom path using the "preferredTsconfig" option.',
+		)
+	}
+
 	const nonAbsoluteEntrypoints = entrypoints.filter(
 		(entrypoint) => !path.isAbsolute(entrypoint),
 	)
