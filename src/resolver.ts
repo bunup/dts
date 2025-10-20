@@ -61,6 +61,7 @@ export function createResolver({
 		if (!resolution.path) {
 			return null
 		}
+
 		const resolved = resolution.path
 
 		// if the resolved path is a js file, check for corresponding d.ts files
