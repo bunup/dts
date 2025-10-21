@@ -31,6 +31,13 @@ import {
 } from './re'
 import { generateVarName, isNullOrUndefined } from './utils'
 
+// intermediate markers used during fake-js transformation
+// these are used to escape special characters that would otherwise be mangled by bundlers
+const MARKERS = {
+	NEWLINE: '\uE000_NL_\uE000',
+	TAB: '\uE001_TB_\uE001',
+} as const
+
 async function dtsToFakeJs(dtsContent: string): Promise<string> {
 	const parsed = parse(dtsContent, {
 		sourceType: 'module',
@@ -295,16 +302,14 @@ function processTokenElement(
 // to template literals and escaping backticks/etc in the final fake-js bundle.
 // https://github.com/bunup/bunup/issues/63
 function escapeNewlinesAndTabs(text: string): string {
-	return text
-		.replace(/\n/g, '__bunup_dts_intermediate_new__line__')
-		.replace(/\t/g, '__bunup_dts_intermediate__tab__')
+	return text.replace(/\n/g, MARKERS.NEWLINE).replace(/\t/g, MARKERS.TAB)
 }
 
 // unescapes previously escaped newlines and tabs back to actual characters.
 function unescapeNewlinesAndTabs(text: string): string {
 	return text
-		.replace(/__bunup_dts_intermediate_new__line__/g, '\n')
-		.replace(/__bunup_dts_intermediate__tab__/g, '\t')
+		.replace(new RegExp(MARKERS.NEWLINE, 'g'), '\n')
+		.replace(new RegExp(MARKERS.TAB, 'g'), '\t')
 }
 
 function handleNamespace(stmt: ExpressionStatement): string | null {
