@@ -1154,4 +1154,358 @@ describe('Bundle functionality', () => {
 		  "
 		`)
 	})
+
+	describe('Unnamed default exports', () => {
+		test('should handle unnamed default class export', async () => {
+			createProject({
+				'src/index.ts': `
+					export default class {
+						run() {
+							console.log('ran')
+						}
+					}
+				`,
+			})
+
+			const files = await runGenerateDts(['src/index.ts'])
+
+			expect(files[0].dts).toMatchInlineSnapshot(`
+			  "declare class hzkonkitay {
+			  	run();
+			  }
+			  export { hzkonkitay as default };
+			  "
+			`)
+		})
+
+		test('should handle unnamed default function export', async () => {
+			createProject({
+				'src/index.ts': `
+					export default function () {
+						return "I'm a function"
+					}
+				`,
+			})
+
+			const files = await runGenerateDts(['src/index.ts'])
+
+			expect(files[0].dts).toMatchInlineSnapshot(`
+			  "declare function azitscygwy(): string;
+			  export { azitscygwy as default };
+			  "
+			`)
+		})
+
+		test('should handle unnamed default arrow function export', async () => {
+			createProject({
+				'src/index.ts': `
+					export default () => {
+						return "I'm an arrow function"
+					}
+				`,
+			})
+
+			const files = await runGenerateDts(['src/index.ts'])
+
+			expect(files[0].dts).toMatchInlineSnapshot(`
+			  "declare const _default: () => string;
+			  export { _default as default };
+			  "
+			`)
+		})
+
+		test('should handle unnamed default class with constructor', async () => {
+			createProject({
+				'src/index.ts': `
+					export default class {
+						private name: string
+
+						constructor(name: string) {
+							this.name = name
+						}
+
+						getName(): string {
+							return this.name
+						}
+
+						setName(name: string): void {
+							this.name = name
+						}
+					}
+				`,
+			})
+
+			const files = await runGenerateDts(['src/index.ts'])
+
+			expect(files[0].dts).toMatchInlineSnapshot(`
+			  "declare class lhbdlwpfok {
+			  	private name;
+			  	constructor(name: string);
+			  	getName(): string;
+			  	setName(name: string): void;
+			  }
+			  export { lhbdlwpfok as default };
+			  "
+			`)
+		})
+
+		test('should handle unnamed default function with parameters and return type', async () => {
+			createProject({
+				'src/index.ts': `
+					export default function (a: number, b: number): number {
+						return a + b
+					}
+				`,
+			})
+
+			const files = await runGenerateDts(['src/index.ts'])
+
+			expect(files[0].dts).toMatchInlineSnapshot(`
+			  "declare function mxwqhnybei(a: number, b: number): number;
+			  export { mxwqhnybei as default };
+			  "
+			`)
+		})
+
+		test('should handle unnamed default class with static members', async () => {
+			createProject({
+				'src/index.ts': `
+					export default class {
+						static instanceCount = 0
+
+						constructor() {
+							(this.constructor as any).instanceCount++
+						}
+
+						static getCount(): number {
+							return this.instanceCount
+						}
+
+						instance() {
+							return 'instance method'
+						}
+					}
+				`,
+			})
+
+			const files = await runGenerateDts(['src/index.ts'])
+
+			expect(files[0].dts).toMatchInlineSnapshot(`
+			  "declare class ttibqrnulr {
+			  	static instanceCount: number;
+			  	constructor();
+			  	static getCount(): number;
+			  	instance(): string;
+			  }
+			  export { ttibqrnulr as default };
+			  "
+			`)
+		})
+
+		test('should handle unnamed default class extending another class', async () => {
+			createProject({
+				'src/base.ts': `
+					export class BaseRunner {
+						protected status: string = 'idle'
+
+						getStatus(): string {
+							return this.status
+						}
+					}
+				`,
+				'src/index.ts': `
+					import { BaseRunner } from './base'
+
+					export default class extends BaseRunner {
+						run() {
+							this.status = 'running'
+							console.log('ran')
+						}
+					}
+				`,
+			})
+
+			const files = await runGenerateDts(['src/index.ts'])
+
+			expect(files[0].dts).toMatchInlineSnapshot(`
+			  "declare class BaseRunner {
+			  	protected status: string;
+			  	getStatus(): string;
+			  }
+			  declare class hdkwhywpns extends BaseRunner {
+			  	run();
+			  }
+			  export { hdkwhywpns as default };
+			  "
+			`)
+		})
+
+		test('should handle unnamed default class implementing interface', async () => {
+			createProject({
+				'src/index.ts': `
+					interface Runnable {
+						run(): void
+						stop(): void
+					}
+
+					export default class implements Runnable {
+						run() {
+							console.log('running')
+						}
+
+						stop() {
+							console.log('stopped')
+						}
+					}
+				`,
+			})
+
+			const files = await runGenerateDts(['src/index.ts'])
+
+			expect(files[0].dts).toMatchInlineSnapshot(`
+			  "interface Runnable {
+			  	run(): void;
+			  	stop(): void;
+			  }
+			  declare class cdeijjuhqu implements Runnable {
+			  	run();
+			  	stop();
+			  }
+			  export { cdeijjuhqu as default };
+			  "
+			`)
+		})
+
+		test('should handle unnamed default async function', async () => {
+			createProject({
+				'src/index.ts': `
+					export default async function (): Promise<string> {
+						await new Promise(resolve => setTimeout(resolve, 100))
+						return "async result"
+					}
+				`,
+			})
+
+			const files = await runGenerateDts(['src/index.ts'])
+
+			expect(files[0].dts).toMatchInlineSnapshot(`
+			  "declare function twnkxwnvya(): Promise<string>;
+			  export { twnkxwnvya as default };
+			  "
+			`)
+		})
+
+		test('should handle unnamed default generator function', async () => {
+			createProject({
+				'src/index.ts': `
+					export default function* (): Generator<number, void, unknown> {
+						yield 1
+						yield 2
+						yield 3
+					}
+				`,
+			})
+
+			const files = await runGenerateDts(['src/index.ts'])
+
+			expect(files[0].dts).toMatchInlineSnapshot(`
+			  "declare function vsbukouozk(): Generator<number, void, unknown>;
+			  export { vsbukouozk as default };
+			  "
+			`)
+		})
+
+		test('should handle unnamed default class with generics', async () => {
+			createProject({
+				'src/index.ts': `
+					export default class<T> {
+						private value: T
+
+						constructor(value: T) {
+							this.value = value
+						}
+
+						getValue(): T {
+							return this.value
+						}
+
+						setValue(value: T): void {
+							this.value = value
+						}
+					}
+				`,
+			})
+
+			const files = await runGenerateDts(['src/index.ts'])
+
+			expect(files[0].dts).toMatchInlineSnapshot(`
+			  "declare class jchdhwcdes {
+			  	private value;
+			  	constructor(value: T);
+			  	getValue(): T;
+			  	setValue(value: T): void;
+			  }
+			  export { jchdhwcdes as default };
+			  "
+			`)
+		})
+
+		test('should handle unnamed default function with generics', async () => {
+			createProject({
+				'src/index.ts': `
+					export default function<T>(items: T[]): T | undefined {
+						return items[0]
+					}
+				`,
+			})
+
+			const files = await runGenerateDts(['src/index.ts'])
+
+			expect(files[0].dts).toMatchInlineSnapshot(`
+			  "declare function akhdihuuyo<T>(items: T[]): T | undefined;
+			  export { akhdihuuyo as default };
+			  "
+			`)
+		})
+
+		test('should handle unnamed default class with both named exports', async () => {
+			createProject({
+				'src/index.ts': `
+					export interface Config {
+						debug: boolean
+					}
+
+					export const VERSION = '1.0.0'
+
+					export default class {
+						config: Config
+
+						constructor(config: Config) {
+							this.config = config
+						}
+
+						run() {
+							console.log('running with version', VERSION)
+						}
+					}
+				`,
+			})
+
+			const files = await runGenerateDts(['src/index.ts'])
+
+			expect(files[0].dts).toMatchInlineSnapshot(`
+			  "interface Config {
+			  	debug: boolean;
+			  }
+			  declare const VERSION = "1.0.0";
+			  declare class thhmkaevcz {
+			  	config: Config;
+			  	constructor(config: Config);
+			  	run();
+			  }
+			  export { thhmkaevcz as default, VERSION, Config };
+			  "
+			`)
+		})
+	})
 })
