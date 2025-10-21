@@ -1050,55 +1050,51 @@ describe('Minify Tests', () => {
 				}
 			`,
 			'src/index.ts': `
-				// Export all models
-				export * from './models/base'
-				export * from './models/entity'
+			import { EntityModel } from './models/entity'
+import { EntityRepository } from './repositories/entity-repository'
+import { EntityService } from './services/entity-service'
 
-				// Export all repositories
-				export * from './repositories/base-repository'
-				export * from './repositories/entity-repository'
+// Export all models
+export * from './models/base'
+// Export specific types with aliases
+export type { Entity as EntityType } from './models/entity'
+export * from './models/entity'
+export type { Repository as RepositoryInterface } from './repositories/base-repository'
+// Export all repositories
+export * from './repositories/base-repository'
+export * from './repositories/entity-repository'
+// Export all services
+export * from './services/entity-service'
 
-				// Export all services
-				export * from './services/entity-service'
+// Export convenience functions
+export function createEntityService(): EntityService {
+				const repository = new EntityRepository()
+				return new EntityService(repository)
+}
 
-				// Export specific types with aliases
-				export type { Entity as EntityType } from './models/entity'
-				export type { Repository as RepositoryInterface } from './repositories/base-repository'
+export function createEntity(
+				type: string,
+				data: Record<string, any> = {},
+): EntityModel {
+				return new EntityModel(Date.now().toString(36), type, data)
+}
 
-				// Export convenience functions
-				export function createEntityService(): EntityService {
-					const repository = new EntityRepository()
-					return new EntityService(repository)
-				}
+const ex: {
+				EntityModel: typeof EntityModel
+				EntityRepository: typeof EntityRepository
+				EntityService: typeof EntityService
+				createEntityService: typeof createEntityService
+				createEntity: typeof createEntity
+} = {
+				EntityModel,
+				EntityRepository,
+				EntityService,
+				createEntityService,
+				createEntity,
+}
 
-				export function createEntity(
-					type: string,
-					data: Record<string, any> = {},
-					metadata?: Record<string, any>
-				): EntityModel {
-					return new EntityModel(
-						Date.now().toString(36),
-						type,
-						data
-					)
-				}
-
-				const ex: {
-					EntityModel: typeof EntityModel
-					EntityRepository: typeof EntityRepository
-					EntityService: typeof EntityService
-					createEntityService: typeof createEntityService
-					createEntity: typeof createEntity
-				} = {
-					EntityModel,
-					EntityRepository,
-					EntityService,
-					createEntityService,
-					createEntity
-				}
-
-				// Default export with everything
-				export default ex
+// Default export with everything
+export default ex
 			`,
 		})
 
@@ -1106,7 +1102,7 @@ describe('Minify Tests', () => {
 
 		expect(files).toHaveLength(1)
 		expect(files[0].dts).toMatchInlineSnapshot(
-			`"interface t{id:string;type:string;data:Record<string,any>;metadata?:Record<string,any>;}declare class _ extends e{type:string;data:Record<string,any>;metadata?:Record<string,any>;constructor(id:string,type:string,data?:Record<string,any>);update(updates:Partial<t>):void;validate():boolean;}declare abstract class e{id:string;createdAt:Date;updatedAt:Date;constructor(id:string);abstract validate():boolean;}interface n<T extends e>{findById(id:string):Promise<T|null>;findAll():Promise<T[]>;save(entity:T):Promise<T>;delete(id:string):Promise<void>;}declare abstract class i<T extends e> implements n<T>{protected entities:Map<string,T>;findById(id:string):Promise<T|null>;findAll():Promise<T[]>;save(entity:T):Promise<T>;delete(id:string):Promise<void>;}declare class d extends i<_>{findByType(type:string):Promise<_[]>;findByMetadata(key:string,value:any):Promise<_[]>;}declare class b{private repository;constructor(repository:d);createEntity(type:string,data?:Record<string,any>,metadata?:Record<string,any>):Promise<_>;updateEntity(id:string,updates:Partial<_>):Promise<_>;deleteEntity(id:string):Promise<void>;getEntity(id:string):Promise<_|null>;getAllEntities():Promise<_[]>;getEntitiesByType(type:string):Promise<_[]>;private generateId}declare function a(): EntityService;declare function u(type:string,data?:Record<string,any>,metadata?:Record<string,any>): EntityModel;declare const r:{EntityModel:typeof EntityModel;EntityRepository:typeof EntityRepository;EntityService:typeof EntityService;a:typeof a;u:typeof u;};export{r as default,a as createEntityService,u as createEntity,n as RepositoryInterface,n as Repository,t as EntityType,b as EntityService,d as EntityRepository,_ as EntityModel,t as Entity,i as BaseRepository,e as BaseModel};"`,
+			`"declare abstract class e{id:string;createdAt:Date;updatedAt:Date;constructor(id:string);abstract validate():boolean;}interface n{id:string;type:string;data:Record<string,any>;metadata?:Record<string,any>;}declare class _ extends e{type:string;data:Record<string,any>;metadata?:Record<string,any>;constructor(id:string,type:string,data?:Record<string,any>);update(updates:Partial<n>):void;validate():boolean;}interface d<T extends e>{findById(id:string):Promise<T|null>;findAll():Promise<T[]>;save(entity:T):Promise<T>;delete(id:string):Promise<void>;}declare abstract class a<T extends e> implements d<T>{protected entities:Map<string,T>;findById(id:string):Promise<T|null>;findAll():Promise<T[]>;save(entity:T):Promise<T>;delete(id:string):Promise<void>;}declare class t extends a<_>{findByType(type:string):Promise<_[]>;findByMetadata(key:string,value:any):Promise<_[]>;}declare class i{private repository;constructor(repository:t);createEntity(type:string,data?:Record<string,any>,metadata?:Record<string,any>):Promise<_>;updateEntity(id:string,updates:Partial<_>):Promise<_>;deleteEntity(id:string):Promise<void>;getEntity(id:string):Promise<_|null>;getAllEntities():Promise<_[]>;getEntitiesByType(type:string):Promise<_[]>;private generateId}declare function u(): i;declare function b(type:string,data?:Record<string,any>): _;declare const r:{_:typeof _;t:typeof t;i:typeof i;u:typeof u;b:typeof b;};export{r as default,u as createEntityService,b as createEntity,d as RepositoryInterface,d as Repository,n as EntityType,i as EntityService,t as EntityRepository,_ as EntityModel,n as Entity,a as BaseRepository,e as BaseModel};"`,
 		)
 	})
 })

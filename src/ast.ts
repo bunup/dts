@@ -61,6 +61,61 @@ export function isDefaultReExport(node: Node): boolean {
 	)
 }
 
+// checks if a node is an unnamed default export (e.g., `export default function() {}` or `export default class {}`)
+// These exports need to be assigned a variable name before fake-js transformation
+export function isUnnamedDefaultExport(node: Node): boolean {
+	if (node.type !== 'ExportDefaultDeclaration') {
+		return false
+	}
+
+	const declaration = node.declaration
+
+	if (!declaration) {
+		return false
+	}
+
+	// check for unnamed function declarations
+	if (
+		(declaration.type === 'FunctionDeclaration' ||
+			declaration.type === 'TSDeclareFunction') &&
+		!declaration.id
+	) {
+		return true
+	}
+
+	// check for unnamed class declarations
+	if (declaration.type === 'ClassDeclaration' && !declaration.id) {
+		return true
+	}
+
+	return false
+}
+
+// assigns a variable name to an unnamed default export by converting:
+// - `export default function() {}` -> `export default function varName() {}`
+// - `export default class {}` -> `export default class varName {}`
+// returns the modified text with the name inserted
+export function assignNameToUnnamedDefaultExport(
+	text: string,
+	varName: string,
+): string {
+	const functionPattern = /export\s+default\s+function\s*([(<])/
+	const functionMatch = text.match(functionPattern)
+
+	if (functionMatch) {
+		return text.replace(functionPattern, `export default function ${varName}$1`)
+	}
+
+	const classPattern = /export\s+default\s+class\s*([{]|extends|implements)/
+	const classMatch = text.match(classPattern)
+
+	if (classMatch) {
+		return text.replace(classPattern, `export default class ${varName} $1`)
+	}
+
+	return text
+}
+
 export function getName(
 	node:
 		| Directive

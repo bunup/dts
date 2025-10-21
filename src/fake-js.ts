@@ -6,6 +6,7 @@ import type {
 	SpreadElement,
 } from '@babel/types'
 import {
+	assignNameToUnnamedDefaultExport,
 	getAllImportNames,
 	getCommentText,
 	getName,
@@ -17,6 +18,7 @@ import {
 	isLikelyVariableOrTypeName,
 	isReExportStatement,
 	isSideEffectImport,
+	isUnnamedDefaultExport,
 	removeExportSyntaxes,
 } from './ast'
 import {
@@ -51,9 +53,11 @@ async function dtsToFakeJs(dtsContent: string): Promise<string> {
 			continue
 		}
 
-		const statementText = dtsContent.substring(statement.start, statement.end)
+		let statementText = dtsContent.substring(statement.start, statement.end)
 
 		const name = getName(statement, dtsContent)
+
+		const jsVarName = name || generateRandomString()
 
 		if (name) {
 			referencedNames.add(name)
@@ -61,10 +65,14 @@ async function dtsToFakeJs(dtsContent: string): Promise<string> {
 
 		const isDefaultExport = hasDefaultExportModifier(statement, statementText)
 
-		const varName = name || generateRandomString()
+		if (isDefaultExport && isUnnamedDefaultExport(statement)) {
+			statementText = assignNameToUnnamedDefaultExport(statementText, jsVarName)
+			referencedNames.add(jsVarName)
+		}
 
 		if (isDefaultExport) {
-			result.push(`export { ${varName} as default };`)
+			result.push(`export { ${jsVarName} as default }`)
+
 			if (isDefaultReExport(statement)) {
 				continue
 			}
@@ -89,26 +97,36 @@ async function dtsToFakeJs(dtsContent: string): Promise<string> {
 
 		leadingComment = getCommentText(statement.leadingComments)
 
-		let statementTextWithCommentsAttatched = `${leadingComment ? `${leadingComment}\n` : ''}${statementText}`
+		let statementTextWithCommentsAttached = `${leadingComment ? `${leadingComment}\n` : ''}${statementText}`
 
 		const isExported = hasExportModifier(statement, statementText)
 
 		if (isExported) {
-			statementTextWithCommentsAttatched = removeExportSyntaxes(
-				statementTextWithCommentsAttatched,
+			statementTextWithCommentsAttached = removeExportSyntaxes(
+				statementTextWithCommentsAttached,
 			)
 		}
 
 		const tokens = tokenizeText(
-			statementTextWithCommentsAttatched,
+			statementTextWithCommentsAttached,
 			referencedNames,
 		)
 
-		result.push(`var ${varName} = [${tokens.join(', ')}];`)
+		result.push(`var ${jsVarName} = [${tokens.join(', ')}];`)
 
-		if (isExported && !isDefaultExport && !exportedNames.has(varName)) {
-			result.push(`export { ${varName} };`)
-			exportedNames.add(varName)
+		if (
+			isExported &&
+			// for default export, we are handling the export of it early, see above
+			!isDefaultExport &&
+			!exportedNames.has(jsVarName)
+		) {
+			if (isDefaultExport) {
+				result.push(`export { ${jsVarName} as default };`)
+			} else {
+				result.push(`export { ${jsVarName} };`)
+			}
+
+			exportedNames.add(jsVarName)
 		}
 	}
 
