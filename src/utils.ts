@@ -59,6 +59,12 @@ export function getShortFilePath(filePath: string, maxLength = 3): string {
 	return shortPath
 }
 
+export function generateVarName(index: number): string {
+	const letter = String.fromCharCode(97 + (index % 26)) // a-z
+	const suffix = Math.floor(index / 26)
+	return suffix === 0 ? letter : `${letter}${suffix - 1}`
+}
+
 export function generateRandomString(length = 10): string {
 	return Array.from({ length }, () =>
 		String.fromCharCode(97 + Math.floor(Math.random() * 26)),

@@ -29,7 +29,7 @@ import {
 	TOKENIZE_RE,
 	TYPE_WORD_RE,
 } from './re'
-import { generateRandomString, isNullOrUndefined } from './utils'
+import { generateVarName, isNullOrUndefined } from './utils'
 
 async function dtsToFakeJs(dtsContent: string): Promise<string> {
 	const parsed = parse(dtsContent, {
@@ -45,7 +45,7 @@ async function dtsToFakeJs(dtsContent: string): Promise<string> {
 		referencedNames.add(name)
 	}
 
-	for (const statement of parsed.program.body) {
+	for (const [index, statement] of parsed.program.body.entries()) {
 		if (
 			isNullOrUndefined(statement.start) ||
 			isNullOrUndefined(statement.end)
@@ -57,7 +57,7 @@ async function dtsToFakeJs(dtsContent: string): Promise<string> {
 
 		const name = getName(statement, dtsContent)
 
-		const jsVarName = name || generateRandomString()
+		const jsVarName = name || generateVarName(index)
 
 		if (name) {
 			referencedNames.add(name)

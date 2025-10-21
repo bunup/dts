@@ -1170,10 +1170,10 @@ describe('Bundle functionality', () => {
 			const files = await runGenerateDts(['src/index.ts'])
 
 			expect(files[0].dts).toMatchInlineSnapshot(`
-			  "declare class hzkonkitay {
+			  "declare class a {
 			  	run();
 			  }
-			  export { hzkonkitay as default };
+			  export { a as default };
 			  "
 			`)
 		})
@@ -1190,8 +1190,8 @@ describe('Bundle functionality', () => {
 			const files = await runGenerateDts(['src/index.ts'])
 
 			expect(files[0].dts).toMatchInlineSnapshot(`
-			  "declare function azitscygwy(): string;
-			  export { azitscygwy as default };
+			  "declare function a(): string;
+			  export { a as default };
 			  "
 			`)
 		})
@@ -1238,13 +1238,13 @@ describe('Bundle functionality', () => {
 			const files = await runGenerateDts(['src/index.ts'])
 
 			expect(files[0].dts).toMatchInlineSnapshot(`
-			  "declare class lhbdlwpfok {
+			  "declare class a {
 			  	private name;
 			  	constructor(name: string);
 			  	getName(): string;
 			  	setName(name: string): void;
 			  }
-			  export { lhbdlwpfok as default };
+			  export { a as default };
 			  "
 			`)
 		})
@@ -1261,8 +1261,8 @@ describe('Bundle functionality', () => {
 			const files = await runGenerateDts(['src/index.ts'])
 
 			expect(files[0].dts).toMatchInlineSnapshot(`
-			  "declare function mxwqhnybei(a: number, b: number): number;
-			  export { mxwqhnybei as default };
+			  "declare function a(a: number, b: number): number;
+			  export { a as default };
 			  "
 			`)
 		})
@@ -1291,13 +1291,13 @@ describe('Bundle functionality', () => {
 			const files = await runGenerateDts(['src/index.ts'])
 
 			expect(files[0].dts).toMatchInlineSnapshot(`
-			  "declare class ttibqrnulr {
+			  "declare class a {
 			  	static instanceCount: number;
 			  	constructor();
 			  	static getCount(): number;
 			  	instance(): string;
 			  }
-			  export { ttibqrnulr as default };
+			  export { a as default };
 			  "
 			`)
 		})
@@ -1332,10 +1332,10 @@ describe('Bundle functionality', () => {
 			  	protected status: string;
 			  	getStatus(): string;
 			  }
-			  declare class hdkwhywpns extends BaseRunner {
+			  declare class b extends BaseRunner {
 			  	run();
 			  }
-			  export { hdkwhywpns as default };
+			  export { b as default };
 			  "
 			`)
 		})
@@ -1367,11 +1367,11 @@ describe('Bundle functionality', () => {
 			  	run(): void;
 			  	stop(): void;
 			  }
-			  declare class cdeijjuhqu implements Runnable {
+			  declare class b implements Runnable {
 			  	run();
 			  	stop();
 			  }
-			  export { cdeijjuhqu as default };
+			  export { b as default };
 			  "
 			`)
 		})
@@ -1389,8 +1389,8 @@ describe('Bundle functionality', () => {
 			const files = await runGenerateDts(['src/index.ts'])
 
 			expect(files[0].dts).toMatchInlineSnapshot(`
-			  "declare function twnkxwnvya(): Promise<string>;
-			  export { twnkxwnvya as default };
+			  "declare function a(): Promise<string>;
+			  export { a as default };
 			  "
 			`)
 		})
@@ -1409,8 +1409,8 @@ describe('Bundle functionality', () => {
 			const files = await runGenerateDts(['src/index.ts'])
 
 			expect(files[0].dts).toMatchInlineSnapshot(`
-			  "declare function vsbukouozk(): Generator<number, void, unknown>;
-			  export { vsbukouozk as default };
+			  "declare function a(): Generator<number, void, unknown>;
+			  export { a as default };
 			  "
 			`)
 		})
@@ -1439,13 +1439,13 @@ describe('Bundle functionality', () => {
 			const files = await runGenerateDts(['src/index.ts'])
 
 			expect(files[0].dts).toMatchInlineSnapshot(`
-			  "declare class jchdhwcdes {
+			  "declare class a {
 			  	private value;
 			  	constructor(value: T);
 			  	getValue(): T;
 			  	setValue(value: T): void;
 			  }
-			  export { jchdhwcdes as default };
+			  export { a as default };
 			  "
 			`)
 		})
@@ -1462,8 +1462,8 @@ describe('Bundle functionality', () => {
 			const files = await runGenerateDts(['src/index.ts'])
 
 			expect(files[0].dts).toMatchInlineSnapshot(`
-			  "declare function akhdihuuyo<T>(items: T[]): T | undefined;
-			  export { akhdihuuyo as default };
+			  "declare function a<T>(items: T[]): T | undefined;
+			  export { a as default };
 			  "
 			`)
 		})
@@ -1498,12 +1498,12 @@ describe('Bundle functionality', () => {
 			  	debug: boolean;
 			  }
 			  declare const VERSION = "1.0.0";
-			  declare class thhmkaevcz {
+			  declare class c {
 			  	config: Config;
 			  	constructor(config: Config);
 			  	run();
 			  }
-			  export { thhmkaevcz as default, VERSION, Config };
+			  export { c as default, VERSION, Config };
 			  "
 			`)
 		})
