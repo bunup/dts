@@ -5,7 +5,7 @@ import { isolatedDeclaration, type OxcError } from 'oxc-transform'
 import { resolveTsImportPath } from 'ts-import-resolver'
 
 import { EMPTY_EXPORT } from './constants'
-import { dtsToFakeJs, fakeJsToDts } from './fake-js'
+import { dtsToFakeJs, fakeJsToDts } from './fake'
 import type { IsolatedDeclarationError } from './isolated-decl-logger'
 import type {
 	GenerateDtsOptions,
