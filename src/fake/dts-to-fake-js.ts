@@ -32,16 +32,21 @@ export async function dtsToFakeJs(dtsContent: string): Promise<string> {
 	}) as File
 
 	const fileIdentifiers = new Set<string>()
+	const exportedNames = new Set<string>()
+	const result: string[] = []
+
 	traverse(ast, {
 		Identifier(path) {
 			fileIdentifiers.add(path.node.name)
 		},
 	})
 
-	const exportedNames = new Set<string>()
-	const result: string[] = []
+	const statements = ast.program.body
 
-	for (const [index, statement] of ast.program.body.entries()) {
+	for (let index = 0; index < statements.length; index++) {
+		const statement = statements[index]
+		if (!statement) continue
+
 		if (
 			isNullOrUndefined(statement.start) ||
 			isNullOrUndefined(statement.end)
@@ -129,12 +134,7 @@ function jsifyImportExport(text: string): string {
 function tokenize(text: string, fileIdentifiers: Set<string>): string[] {
 	const tokens: string[] = []
 
-	let match: RegExpExecArray | null
-	TOKENIZE_RE.lastIndex = 0
-	while (true) {
-		match = TOKENIZE_RE.exec(text)
-		if (match === null) break
-
+	for (const match of text.matchAll(TOKENIZE_RE)) {
 		const token = match[0]
 
 		if (fileIdentifiers.has(token) && !isReservedKeyword(token)) {

@@ -9,7 +9,9 @@ export const MARKERS = {
 // to template literals and escaping backticks/etc in the final fake-js bundle.
 // https://github.com/bunup/bunup/issues/63
 export function escapeNewlinesAndTabs(text: string): string {
-	return text.replace(/\n/g, MARKERS.NEWLINE).replace(/\t/g, MARKERS.TAB)
+	return text.replace(/[\n\t]/g, (match) =>
+		match === '\n' ? MARKERS.NEWLINE : MARKERS.TAB,
+	)
 }
 
 // unescapes previously escaped newlines and tabs back to actual characters.
@@ -19,7 +21,7 @@ export function unescapeNewlinesAndTabs(text: string): string {
 		.replace(new RegExp(MARKERS.TAB, 'g'), '\t')
 }
 
-const reservedKeywords = new Set([
+const reservedKeywordsArray = [
 	'break',
 	'case',
 	'catch',
@@ -128,14 +130,14 @@ const reservedKeywords = new Set([
 	'Set',
 	'WeakMap',
 	'WeakSet',
-])
+]
+
+const reservedKeywordsLower = new Set(
+	reservedKeywordsArray.map((kw) => kw.toLowerCase()),
+)
 
 // Checks if a given text is a JavaScript/TypeScript reserved keyword
 // that could cause syntax errors when used as an identifier
-// @param keyword - The text to check
-// @returns true if the keyword is reserved, false otherwise
 export function isReservedKeyword(keyword: string): boolean {
-	const lowerKeyword = keyword.toLowerCase()
-
-	return reservedKeywords.has(lowerKeyword)
+	return reservedKeywordsLower.has(keyword.toLowerCase())
 }

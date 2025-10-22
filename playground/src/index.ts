@@ -11,7 +11,7 @@ export interface PaginatedResponse<T> {
 	limit: number
 }
 
-export interface ApiClient<T = any> {
+export interface ApiClient<T = unknown> {
 	get<U = T>(url: string): Promise<PaginatedResponse<U>>
 	post<U = T>(url: string, data: U): Promise<U>
 }

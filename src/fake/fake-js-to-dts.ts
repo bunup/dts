@@ -91,17 +91,17 @@ function processTokenArray(arrayLiteral: Node): string | null {
 		return null
 	}
 
-	const tokens: string[] = []
+	let result = ''
 
 	for (const element of arrayLiteral.elements) {
 		if (!element) continue
 		const processed = processTokenElement(element)
 		if (processed !== null) {
-			tokens.push(processed)
+			result += processed
 		}
 	}
 
-	return tokens.join('')
+	return result
 }
 
 function processTokenElement(
