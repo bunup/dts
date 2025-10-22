@@ -1,90 +1,97 @@
 import { parse } from '@babel/parser'
+import traverse from '@babel/traverse'
 import type {
 	Expression,
 	ExpressionStatement,
+	File,
 	Node,
 	SpreadElement,
 } from '@babel/types'
-import {
-	isExportAllDeclaration,
-	isImportDeclaration,
-	isReExportStatement,
-} from '../ast'
+import * as t from '@babel/types'
 import { isNullOrUndefined } from '../utils'
 import { unescapeNewlinesAndTabs } from './utils'
 
 export async function fakeJsToDts(fakeJsContent: string): Promise<string> {
-	const parseResult = parse(fakeJsContent, {
+	const ast = parse(fakeJsContent, {
 		sourceType: 'module',
 		attachComment: false,
-	})
+	}) as File
 
-	const program = parseResult.program
-	const resultParts = []
+	const resultParts: string[] = []
 
-	for (const statement of program.body) {
-		if (
-			isNullOrUndefined(statement.start) ||
-			isNullOrUndefined(statement.end)
-		) {
-			continue
-		}
-
-		const statementText = fakeJsContent.substring(
-			statement.start,
-			statement.end,
-		)
-
-		if (
-			isImportDeclaration(statement) ||
-			isExportAllDeclaration(statement) ||
-			isReExportStatement(statement)
-		) {
-			if (isImportDeclaration(statement)) {
-				resultParts.push(
-					// This is important when `splitting` is enabled, as
-					// the import paths would be referencing chunk files with .js extensions
-					// that need to be removed for proper type declarations
-					statementText.replace(/.(?:mjs|cjs|js)\b/g, ''),
-				)
-
-				continue
+	traverse(ast, {
+		ImportDeclaration(path) {
+			if (
+				isNullOrUndefined(path.node.start) ||
+				isNullOrUndefined(path.node.end)
+			) {
+				return
 			}
 
+			const statementText = fakeJsContent.substring(
+				path.node.start,
+				path.node.end,
+			)
+
+			resultParts.push(statementText.replace(/.(?:mjs|cjs|js)\b/g, ''))
+		},
+		ExportAllDeclaration(path) {
+			if (
+				isNullOrUndefined(path.node.start) ||
+				isNullOrUndefined(path.node.end)
+			) {
+				return
+			}
+
+			const statementText = fakeJsContent.substring(
+				path.node.start,
+				path.node.end,
+			)
 			resultParts.push(statementText)
+		},
+		ExportNamedDeclaration(path) {
+			if (!path.node.declaration) {
+				if (
+					isNullOrUndefined(path.node.start) ||
+					isNullOrUndefined(path.node.end)
+				) {
+					return
+				}
 
-			continue
-		}
-
-		if (statement.type === 'ExpressionStatement') {
-			const namespaceDecl = handleNamespace(statement)
+				const statementText = fakeJsContent.substring(
+					path.node.start,
+					path.node.end,
+				)
+				resultParts.push(statementText)
+			}
+		},
+		ExpressionStatement(path) {
+			const namespaceDecl = handleNamespace(path.node)
 			if (namespaceDecl) {
 				resultParts.push(namespaceDecl)
-				continue
 			}
-		}
-
-		if (statement.type === 'VariableDeclaration') {
-			for (const declaration of statement.declarations) {
-				if (declaration.init?.type === 'ArrayExpression') {
+		},
+		VariableDeclaration(path) {
+			for (const declaration of path.node.declarations) {
+				if (t.isArrayExpression(declaration.init)) {
 					const dtsContent = processTokenArray(declaration.init)
 					if (dtsContent) {
 						resultParts.push(dtsContent)
 					}
 				}
 			}
-		}
-	}
+		},
+	})
 
 	return resultParts.join('\n')
 }
 
 function processTokenArray(arrayLiteral: Node): string | null {
-	if (arrayLiteral.type !== 'ArrayExpression') {
+	if (!t.isArrayExpression(arrayLiteral)) {
 		return null
 	}
 
-	const tokens = []
+	const tokens: string[] = []
 
 	for (const element of arrayLiteral.elements) {
 		if (!element) continue
@@ -100,20 +107,20 @@ function processTokenArray(arrayLiteral: Node): string | null {
 function processTokenElement(
 	element: SpreadElement | Expression,
 ): string | null {
-	if (element.type === 'StringLiteral' && typeof element.value === 'string') {
+	if (t.isStringLiteral(element)) {
 		return unescapeNewlinesAndTabs(element.value)
 	}
 
-	if (element.type === 'Identifier') {
+	if (t.isIdentifier(element)) {
 		return element.name
 	}
 
-	if (element.type === 'TemplateLiteral') {
-		const parts = []
+	if (t.isTemplateLiteral(element)) {
+		const parts: string[] = []
 		parts.push(unescapeNewlinesAndTabs(element.quasis[0]?.value?.raw || ''))
 		for (let i = 0; i < element.expressions.length; i++) {
 			const expr = element.expressions[i]
-			if (expr?.type === 'Identifier') {
+			if (expr && t.isIdentifier(expr)) {
 				parts.push(expr.name)
 			}
 			parts.push(
@@ -130,24 +137,24 @@ function handleNamespace(stmt: ExpressionStatement): string | null {
 
 	if (
 		!expr ||
-		expr.type !== 'CallExpression' ||
-		expr.callee?.type !== 'Identifier' ||
-		expr.arguments?.length !== 2 ||
-		expr.arguments[0]?.type !== 'Identifier' ||
-		expr.arguments[1]?.type !== 'ObjectExpression'
+		!t.isCallExpression(expr) ||
+		!t.isIdentifier(expr.callee) ||
+		expr.arguments.length !== 2 ||
+		!t.isIdentifier(expr.arguments[0]) ||
+		!t.isObjectExpression(expr.arguments[1])
 	) {
 		return null
 	}
 
 	const namespaceName = expr.arguments[0].name
 	const properties = expr.arguments[1].properties
-		.filter((prop) => prop.type === 'ObjectProperty')
+		.filter((prop) => t.isObjectProperty(prop))
 		.map((prop) => {
 			if (
-				prop.type === 'ObjectProperty' &&
-				prop.key.type === 'Identifier' &&
-				prop.value.type === 'ArrowFunctionExpression' &&
-				prop.value.body.type === 'Identifier'
+				t.isObjectProperty(prop) &&
+				t.isIdentifier(prop.key) &&
+				t.isArrowFunctionExpression(prop.value) &&
+				t.isIdentifier(prop.value.body)
 			) {
 				const keyName = prop.key.name
 				const returnName = prop.value.body.name
@@ -156,7 +163,7 @@ function handleNamespace(stmt: ExpressionStatement): string | null {
 			}
 			return null
 		})
-		.filter(Boolean)
+		.filter((prop): prop is string => prop !== null)
 
 	if (properties.length === 0) {
 		return null

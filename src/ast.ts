@@ -9,62 +9,53 @@ import type {
 	Node,
 	Statement,
 } from '@babel/types'
+import * as t from '@babel/types'
 
-import { CAPITAL_LETTER_RE, EXPORT_DEFAULT_RE, EXPORT_RE } from './re'
-
-export function isLikelyVariableOrTypeName(token: string): boolean {
-	return (
-		CAPITAL_LETTER_RE.test(token) &&
-		!token.startsWith('/*') &&
-		!token.startsWith('@') &&
-		!token.startsWith('"') &&
-		!token.startsWith("'") &&
-		!token.startsWith('`')
-	)
-}
-
-export function isImportDeclaration(node: Node): boolean {
-	return node.type === 'ImportDeclaration'
-}
+import { EXPORT_DEFAULT_RE, EXPORT_RE } from './re'
 
 export function removeExportSyntaxes(text: string): string {
 	return text.replace(EXPORT_DEFAULT_RE, '').replace(EXPORT_RE, '')
 }
 
-export function isExportAllDeclaration(node: Node): boolean {
-	return node.type === 'ExportAllDeclaration'
+export function isReExportStatement(
+	node: Node,
+): node is ExportNamedDeclaration {
+	return t.isExportNamedDeclaration(node) && !node.declaration
 }
 
-export function isReExportStatement(node: Node): boolean {
-	return node.type === 'ExportNamedDeclaration' && !node.declaration
-}
-
-export function isSideEffectImport(node: Node): boolean {
-	return node.type === 'ImportDeclaration' && node.specifiers.length === 0
+export function isSideEffectImport(node: Node): node is ImportDeclaration {
+	return t.isImportDeclaration(node) && node.specifiers.length === 0
 }
 
 export function hasExportModifier(node: Node, text: string): boolean {
-	return node.type.startsWith('Export') || text.trim().startsWith('export')
+	return (
+		t.isExportDeclaration(node) ||
+		t.isExportDefaultDeclaration(node) ||
+		t.isExportNamedDeclaration(node) ||
+		t.isExportAllDeclaration(node) ||
+		text.trim().startsWith('export')
+	)
 }
 
 export function hasDefaultExportModifier(node: Node, text: string): boolean {
 	return (
-		node.type === 'ExportDefaultDeclaration' ||
+		t.isExportDefaultDeclaration(node) ||
 		text.trim().startsWith('export default')
 	)
 }
 
-export function isDefaultReExport(node: Node): boolean {
+export function isDefaultReExport(
+	node: Node,
+): node is ExportDefaultDeclaration {
 	return (
-		node.type === 'ExportDefaultDeclaration' &&
-		node.declaration?.type === 'Identifier'
+		t.isExportDefaultDeclaration(node) &&
+		node.declaration !== null &&
+		t.isIdentifier(node.declaration)
 	)
 }
 
-// checks if a node is an unnamed default export (e.g., `export default function() {}` or `export default class {}`)
-// These exports need to be assigned a variable name before fake-js transformation
 export function isUnnamedDefaultExport(node: Node): boolean {
-	if (node.type !== 'ExportDefaultDeclaration') {
+	if (!t.isExportDefaultDeclaration(node)) {
 		return false
 	}
 
@@ -74,27 +65,21 @@ export function isUnnamedDefaultExport(node: Node): boolean {
 		return false
 	}
 
-	// check for unnamed function declarations
 	if (
-		(declaration.type === 'FunctionDeclaration' ||
-			declaration.type === 'TSDeclareFunction') &&
+		(t.isFunctionDeclaration(declaration) ||
+			t.isTSDeclareFunction(declaration)) &&
 		!declaration.id
 	) {
 		return true
 	}
 
-	// check for unnamed class declarations
-	if (declaration.type === 'ClassDeclaration' && !declaration.id) {
+	if (t.isClassDeclaration(declaration) && !declaration.id) {
 		return true
 	}
 
 	return false
 }
 
-// assigns a variable name to an unnamed default export by converting:
-// - `export default function() {}` -> `export default function varName() {}`
-// - `export default class {}` -> `export default class varName {}`
-// returns the modified text with the name inserted
 export function assignNameToUnnamedDefaultExport(
 	text: string,
 	varName: string,
@@ -127,46 +112,47 @@ export function getName(
 ): string | null {
 	if (!node) return null
 
-	if (node.type === 'ExportNamedDeclaration' && node.declaration) {
+	if (t.isExportNamedDeclaration(node) && node.declaration) {
 		return getName(node.declaration as Declaration, source)
 	}
 
-	if (node.type === 'ExportDefaultDeclaration' && node.declaration) {
-		if (node.declaration.type === 'Identifier') {
+	if (t.isExportDefaultDeclaration(node) && node.declaration) {
+		if (t.isIdentifier(node.declaration)) {
 			return node.declaration.name
 		}
 		return getName(node.declaration as Declaration, source)
 	}
 
-	switch (node.type) {
-		case 'TSInterfaceDeclaration':
-		case 'TSTypeAliasDeclaration':
-		case 'ClassDeclaration':
-		case 'TSEnumDeclaration':
-		case 'FunctionDeclaration':
-		case 'TSDeclareFunction':
-			if (node.id && node.id.type === 'Identifier') {
-				return node.id.name
-			}
-			break
-
-		case 'TSModuleDeclaration':
-			if (node.id && node.id.type === 'Identifier') {
-				return node.id.name
-			}
-			break
-
-		case 'VariableDeclaration': {
-			const declarations = node.declarations
-			if (
-				declarations?.length === 1 &&
-				declarations[0]?.id?.type === 'Identifier'
-			) {
-				return declarations[0].id.name
-			}
-			break
+	if (
+		t.isTSInterfaceDeclaration(node) ||
+		t.isTSTypeAliasDeclaration(node) ||
+		t.isClassDeclaration(node) ||
+		t.isTSEnumDeclaration(node) ||
+		t.isFunctionDeclaration(node) ||
+		t.isTSDeclareFunction(node)
+	) {
+		if (node.id && t.isIdentifier(node.id)) {
+			return node.id.name
 		}
 	}
+
+	if (t.isTSModuleDeclaration(node)) {
+		if (node.id && t.isIdentifier(node.id)) {
+			return node.id.name
+		}
+	}
+
+	if (t.isVariableDeclaration(node)) {
+		const declarations = node.declarations
+		if (
+			declarations?.length === 1 &&
+			declarations[0]?.id &&
+			t.isIdentifier(declarations[0].id)
+		) {
+			return declarations[0].id.name
+		}
+	}
+
 	return null
 }
 
@@ -183,28 +169,4 @@ export function getCommentText(
 					: null
 		})
 		.join('\n')
-}
-
-export function getAllImportNames(body: Statement[]): string[] {
-	const importNames: string[] = []
-
-	for (const statement of body) {
-		if (isImportDeclaration(statement)) {
-			const importDecl = statement as ImportDeclaration
-
-			if (importDecl.specifiers) {
-				for (const specifier of importDecl.specifiers) {
-					if (specifier.type === 'ImportDefaultSpecifier') {
-						importNames.push(specifier.local.name)
-					} else if (specifier.type === 'ImportSpecifier') {
-						importNames.push(specifier.local.name)
-					} else if (specifier.type === 'ImportNamespaceSpecifier') {
-						importNames.push(specifier.local.name)
-					}
-				}
-			}
-		}
-	}
-
-	return importNames
 }

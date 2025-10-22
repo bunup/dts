@@ -1,15 +1,14 @@
 import { parse } from '@babel/parser'
+import traverse from '@babel/traverse'
+import type { File } from '@babel/types'
+import * as t from '@babel/types'
 import {
 	assignNameToUnnamedDefaultExport,
-	getAllImportNames,
 	getCommentText,
 	getName,
 	hasDefaultExportModifier,
 	hasExportModifier,
 	isDefaultReExport,
-	isExportAllDeclaration,
-	isImportDeclaration,
-	isLikelyVariableOrTypeName,
 	isReExportStatement,
 	isSideEffectImport,
 	isUnnamedDefaultExport,
@@ -27,20 +26,22 @@ import { generateVarName, isNullOrUndefined } from '../utils'
 import { escapeNewlinesAndTabs } from './utils'
 
 export async function dtsToFakeJs(dtsContent: string): Promise<string> {
-	const parsed = parse(dtsContent, {
+	const ast = parse(dtsContent, {
 		sourceType: 'module',
 		plugins: ['typescript'],
+	}) as File
+
+	const fileIdentifiers = new Set<string>()
+	traverse(ast, {
+		Identifier(path) {
+			fileIdentifiers.add(path.node.name)
+		},
 	})
 
-	const referencedNames = new Set<string>()
 	const exportedNames = new Set<string>()
-	const result = []
+	const result: string[] = []
 
-	for (const name of getAllImportNames(parsed.program.body)) {
-		referencedNames.add(name)
-	}
-
-	for (const [index, statement] of parsed.program.body.entries()) {
+	for (const [index, statement] of ast.program.body.entries()) {
 		if (
 			isNullOrUndefined(statement.start) ||
 			isNullOrUndefined(statement.end)
@@ -51,18 +52,12 @@ export async function dtsToFakeJs(dtsContent: string): Promise<string> {
 		let statementText = dtsContent.substring(statement.start, statement.end)
 
 		const name = getName(statement, dtsContent)
-
 		const jsVarName = name || generateVarName(index)
-
-		if (name) {
-			referencedNames.add(name)
-		}
 
 		const isDefaultExport = hasDefaultExportModifier(statement, statementText)
 
 		if (isDefaultExport && isUnnamedDefaultExport(statement)) {
 			statementText = assignNameToUnnamedDefaultExport(statementText, jsVarName)
-			referencedNames.add(jsVarName)
 		}
 
 		if (isDefaultExport) {
@@ -74,8 +69,8 @@ export async function dtsToFakeJs(dtsContent: string): Promise<string> {
 		}
 
 		if (
-			isImportDeclaration(statement) ||
-			isExportAllDeclaration(statement) ||
+			t.isImportDeclaration(statement) ||
+			t.isExportAllDeclaration(statement) ||
 			isReExportStatement(statement)
 		) {
 			if (isSideEffectImport(statement)) {
@@ -83,15 +78,11 @@ export async function dtsToFakeJs(dtsContent: string): Promise<string> {
 			}
 
 			const jsImportExport = jsifyImportExport(statementText)
-
 			result.push(jsImportExport)
 			continue
 		}
 
-		let leadingComment: string | null = null
-
-		leadingComment = getCommentText(statement.leadingComments)
-
+		const leadingComment = getCommentText(statement.leadingComments)
 		let statementTextWithCommentsAttached = `${leadingComment ? `${leadingComment}\n` : ''}${statementText}`
 
 		const isExported = hasExportModifier(statement, statementText)
@@ -102,25 +93,12 @@ export async function dtsToFakeJs(dtsContent: string): Promise<string> {
 			)
 		}
 
-		const tokens = tokenizeText(
-			statementTextWithCommentsAttached,
-			referencedNames,
-		)
+		const tokens = tokenize(statementTextWithCommentsAttached, fileIdentifiers)
 
 		result.push(`var ${jsVarName} = [${tokens.join(', ')}];`)
 
-		if (
-			isExported &&
-			// for default export, we are handling the export of it early, see above
-			!isDefaultExport &&
-			!exportedNames.has(jsVarName)
-		) {
-			if (isDefaultExport) {
-				result.push(`export { ${jsVarName} as default };`)
-			} else {
-				result.push(`export { ${jsVarName} };`)
-			}
-
+		if (isExported && !isDefaultExport && !exportedNames.has(jsVarName)) {
+			result.push(`export { ${jsVarName} };`)
 			exportedNames.add(jsVarName)
 		}
 	}
@@ -128,11 +106,6 @@ export async function dtsToFakeJs(dtsContent: string): Promise<string> {
 	return result.join('\n')
 }
 
-// converts typescript import/export statements to javascript equivalents
-// - "import type { Foo } from 'bar'" -> "import { Foo } from 'bar'"
-// - "export type { Baz }" -> "export { Baz }"
-// - "import { type A, B } from 'mod'" -> "import { A, B } from 'mod'"
-// - "import Def, { type Named } from 'lib'" -> "import Def, { Named } from 'lib'"
 function jsifyImportExport(text: string): string {
 	let result = text
 		.replace(IMPORT_TYPE_RE, 'import ')
@@ -153,8 +126,8 @@ function jsifyImportExport(text: string): string {
 	return result
 }
 
-function tokenizeText(text: string, referencedNames: Set<string>): string[] {
-	const tokens = []
+function tokenize(text: string, fileIdentifiers: Set<string>): string[] {
+	const tokens: string[] = []
 
 	let match: RegExpExecArray | null
 	TOKENIZE_RE.lastIndex = 0
@@ -164,7 +137,7 @@ function tokenizeText(text: string, referencedNames: Set<string>): string[] {
 
 		const token = match[0]
 
-		if (isLikelyVariableOrTypeName(token) || referencedNames.has(token)) {
+		if (fileIdentifiers.has(token)) {
 			tokens.push(token)
 		} else {
 			tokens.push(JSON.stringify(escapeNewlinesAndTabs(token)))

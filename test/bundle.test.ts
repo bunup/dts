@@ -288,12 +288,12 @@ describe('Bundle functionality', () => {
 
 			expect(files[0].dts).toMatchInlineSnapshot(`
 			  "declare namespace exports_string {
-			  	export { calculate, EMPTY };
+			  	export { calculate2 as calculate, EMPTY };
 			  }
-			  declare function calculate(text: string): string;
+			  declare function calculate2(text: string): string;
 			  declare const EMPTY = "";
 			  type CalculateReturnType = ReturnType<typeof exports_string.calculate>;
-			  export { calculate, EMPTY, CalculateReturnType };
+			  export { calculate2 as calculate, EMPTY, CalculateReturnType };
 			  "
 			`)
 		})
