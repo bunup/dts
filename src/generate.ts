@@ -171,8 +171,6 @@ export async function generateDts(
 							fakeJsContent = EMPTY_EXPORT
 						}
 
-						console.log(fakeJsContent)
-
 						return {
 							loader: 'js',
 							contents: fakeJsContent,

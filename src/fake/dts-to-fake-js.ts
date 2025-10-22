@@ -23,7 +23,7 @@ import {
 	TYPE_WORD_RE,
 } from '../re'
 import { generateVarName, isNullOrUndefined } from '../utils'
-import { escapeNewlinesAndTabs } from './utils'
+import { escapeNewlinesAndTabs, isReservedKeyword } from './utils'
 
 export async function dtsToFakeJs(dtsContent: string): Promise<string> {
 	const ast = parse(dtsContent, {
@@ -137,7 +137,7 @@ function tokenize(text: string, fileIdentifiers: Set<string>): string[] {
 
 		const token = match[0]
 
-		if (fileIdentifiers.has(token)) {
+		if (fileIdentifiers.has(token) && !isReservedKeyword(token)) {
 			tokens.push(token)
 		} else {
 			tokens.push(JSON.stringify(escapeNewlinesAndTabs(token)))
