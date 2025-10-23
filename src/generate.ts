@@ -135,8 +135,9 @@ export async function generateDts(
 							declaration = sourceText
 						} else {
 							if (options.inferTypes && tsCompiledDist) {
+								const relativePath = path.relative(cwd, args.path)
 								const declarationPath = replaceExtension(
-									path.join(tsCompiledDist, args.path.replace(cwd, '')),
+									path.join(tsCompiledDist, relativePath),
 									'.d.ts',
 								)
 
