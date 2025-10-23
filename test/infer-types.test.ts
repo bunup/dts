@@ -41,11 +41,21 @@ describe('inferTypes option', () => {
 			inferTypes: true,
 		})
 
-		expect(files[0].dts).toContain('declare const computedValue: number')
-		expect(files[0].dts).toContain('declare function multiply')
-		expect(files[0].dts).toContain('declare const result: number')
-		expect(files[0].dts).toContain('declare const stringArray: string[]')
-		expect(files[0].dts).toContain('declare const mixedData')
+		expect(files[0].dts).toMatchInlineSnapshot(`
+		  "declare const computedValue: number;
+		  declare function multiply(a: number, b: number): number;
+		  declare const result: number;
+		  declare const stringArray: string[];
+		  declare const mixedData: {
+		  	count: number;
+		  	name: string;
+		  	nested: {
+		  		value: boolean;
+		  	};
+		  };
+		  export { stringArray, result, multiply, mixedData, computedValue };
+		  "
+		`)
 	})
 
 	test('should handle complex type inference with generics', async () => {
@@ -82,10 +92,14 @@ describe('inferTypes option', () => {
 			inferTypes: true,
 		})
 
-		expect(files[0].dts).toContain('declare const numberResult')
-		expect(files[0].dts).toContain('declare const stringResult')
-		expect(files[0].dts).toContain('declare const numbers')
-		expect(files[0].dts).toContain('declare const doubled')
+		expect(files[0].dts).toMatchInlineSnapshot(`
+		  "declare const numberResult = 42;
+		  declare const stringResult = "hello";
+		  declare const numbers: number[];
+		  declare const doubled: number[];
+		  export { stringResult, numbers, numberResult, doubled };
+		  "
+		`)
 	})
 
 	test('should infer return types for functions without explicit return type', async () => {
@@ -121,11 +135,20 @@ describe('inferTypes option', () => {
 			inferTypes: true,
 		})
 
-		expect(files[0].dts).toContain(
-			'declare function add(a: number, b: number): number',
-		)
-		expect(files[0].dts).toContain('declare function createUser')
-		expect(files[0].dts).toContain('declare function fetchData()')
+		expect(files[0].dts).toMatchInlineSnapshot(`
+		  "declare function add(a: number, b: number): number;
+		  declare function createUser(name: string, age: number): {
+		  	name: string;
+		  	age: number;
+		  	isActive: boolean;
+		  };
+		  declare function fetchData(): Promise<{
+		  	data: string;
+		  	timestamp: number;
+		  }>;
+		  export { fetchData, createUser, add };
+		  "
+		`)
 	})
 
 	test('should handle nested file imports with type inference', async () => {
@@ -169,9 +192,17 @@ describe('inferTypes option', () => {
 			inferTypes: true,
 		})
 
-		expect(files[0].dts).toContain('declare function buildUrl')
-		expect(files[0].dts).toContain('declare const maxTimeout')
-		expect(files[0].dts).toContain('declare const apiConfig')
+		expect(files[0].dts).toMatchInlineSnapshot(`
+		  "declare function buildUrl(path: string): string;
+		  declare const maxTimeout: number;
+		  declare const apiConfig: {
+		  	url: string;
+		  	retries: number;
+		  	cache: boolean;
+		  };
+		  export { maxTimeout, buildUrl, apiConfig };
+		  "
+		`)
 	})
 
 	test('should handle class property type inference', async () => {
@@ -211,11 +242,17 @@ describe('inferTypes option', () => {
 			inferTypes: true,
 		})
 
-		expect(files[0].dts).toContain('declare class Calculator')
-		expect(files[0].dts).toContain('value: number')
-		expect(files[0].dts).toContain('add(n: number): this')
-		expect(files[0].dts).toContain('multiply(n: number): this')
-		expect(files[0].dts).toContain('getResult(): number')
+		expect(files[0].dts).toMatchInlineSnapshot(`
+		  "declare class Calculator {
+		  	value: number;
+		  	add(n: number): this;
+		  	multiply(n: number): this;
+		  	getResult(): number;
+		  }
+		  declare const calc: Calculator;
+		  export { calc, Calculator };
+		  "
+		`)
 	})
 
 	test('should work with path aliases defined in tsconfig', async () => {
@@ -257,9 +294,16 @@ describe('inferTypes option', () => {
 			inferTypes: true,
 		})
 
-		expect(files[0].dts).toContain('interface User')
-		expect(files[0].dts).toContain('declare function getUser')
-		expect(files[0].dts).toContain('declare const defaultUser')
+		expect(files[0].dts).toMatchInlineSnapshot(`
+		  "interface User {
+		  	id: number;
+		  	name: string;
+		  }
+		  declare function getUser(id: number): User;
+		  declare const defaultUser: User;
+		  export { getUser, defaultUser, User };
+		  "
+		`)
 	})
 
 	test('should error when inferTypes is enabled but no tsconfig exists', async () => {
@@ -307,11 +351,18 @@ describe('inferTypes option', () => {
 			inferTypes: true,
 		})
 
-		expect(files[0].dts).toContain('declare const doubled: number[]')
-		expect(files[0].dts).toContain('declare const filtered: number[]')
-		expect(files[0].dts).toContain('declare const sum: number')
-		expect(files[0].dts).toContain('declare const names: string[]')
-		expect(files[0].dts).toContain('declare const adults')
+		expect(files[0].dts).toMatchInlineSnapshot(`
+		  "declare const doubled: number[];
+		  declare const filtered: number[];
+		  declare const sum: number;
+		  declare const names: string[];
+		  declare const adults: {
+		  	name: string;
+		  	age: number;
+		  }[];
+		  export { sum, names, filtered, doubled, adults };
+		  "
+		`)
 	})
 
 	test('should handle deeply nested file structure with inferTypes', async () => {
@@ -396,13 +447,34 @@ describe('inferTypes option', () => {
 			inferTypes: true,
 		})
 
-		expect(files[0].dts).toContain('interface User')
-		expect(files[0].dts).toContain('declare function validateEmail')
-		expect(files[0].dts).toContain('declare const MIN_PASSWORD_LENGTH')
-		expect(files[0].dts).toContain('declare function login')
-		expect(files[0].dts).toContain('declare const loginResult')
-		expect(files[0].dts).toContain('declare function getProfile')
-		expect(files[0].dts).toContain('declare const defaultProfile')
+		expect(files[0].dts).toMatchInlineSnapshot(`
+		  "interface User {
+		  	id: number;
+		  	name: string;
+		  }
+		  declare function validateEmail(email: string): boolean;
+		  declare const MIN_PASSWORD_LENGTH = 8;
+		  declare function login(email: string, password: string): {
+		  	user: User;
+		  	token: string;
+		  };
+		  declare const loginResult: {
+		  	user: User;
+		  	token: string;
+		  };
+		  declare function getProfile(userId: number): {
+		  	userId: number;
+		  	bio: string;
+		  	createdAt: Date;
+		  };
+		  declare const defaultProfile: {
+		  	userId: number;
+		  	bio: string;
+		  	createdAt: Date;
+		  };
+		  export { validateEmail, loginResult, login, getProfile, defaultProfile, User, MIN_PASSWORD_LENGTH };
+		  "
+		`)
 	})
 
 	test('should handle very deep imports (5+ levels) with inferTypes', async () => {
@@ -453,9 +525,13 @@ describe('inferTypes option', () => {
 			inferTypes: true,
 		})
 
-		expect(files[0].dts).toContain('declare function useDeepFunction')
-		expect(files[0].dts).toContain('declare const result')
-		expect(files[0].dts).toContain('declare const doubled')
+		expect(files[0].dts).toMatchInlineSnapshot(`
+		  "declare function useDeepFunction(): number;
+		  declare const result: number;
+		  declare const doubled: number;
+		  export { useDeepFunction, result, doubled };
+		  "
+		`)
 	})
 
 	test('should handle cross-directory imports with inferTypes', async () => {
@@ -508,8 +584,12 @@ describe('inferTypes option', () => {
 			inferTypes: true,
 		})
 
-		expect(files[0].dts).toContain('declare function combined')
-		expect(files[0].dts).toContain('declare const result')
+		expect(files[0].dts).toMatchInlineSnapshot(`
+		  "declare function combined(x: number): number;
+		  declare const result: number;
+		  export { result, combined };
+		  "
+		`)
 	})
 
 	test('should handle functions without return types across multiple files', async () => {
@@ -612,12 +692,32 @@ describe('inferTypes option', () => {
 			inferTypes: true,
 		})
 
-		expect(files[0].dts).toContain('declare function complexCalculation')
-		expect(files[0].dts).toContain('declare function processData')
-		expect(files[0].dts).toContain('declare function stringOps')
-		expect(files[0].dts).toContain('declare const calcResult: number')
-		expect(files[0].dts).toContain('declare const dataResult')
-		expect(files[0].dts).toContain('declare const stringResult')
+		expect(files[0].dts).toMatchInlineSnapshot(`
+		  "declare function complexCalculation(x: number, y: number): number;
+		  declare function processData(items: number[]): {
+		  	total: number;
+		  	avg: number;
+		  	count: number;
+		  };
+		  declare function stringOps(a: string, b: string): {
+		  	upper: string;
+		  	lower: string;
+		  	length: number;
+		  };
+		  declare const calcResult: number;
+		  declare const dataResult: {
+		  	total: number;
+		  	avg: number;
+		  	count: number;
+		  };
+		  declare const stringResult: {
+		  	upper: string;
+		  	lower: string;
+		  	length: number;
+		  };
+		  export { stringResult, stringOps, processData, dataResult, complexCalculation, calcResult };
+		  "
+		`)
 	})
 
 	test('should handle variables without explicit types in nested structure', async () => {
@@ -712,12 +812,80 @@ describe('inferTypes option', () => {
 			inferTypes: true,
 		})
 
-		expect(files[0].dts).toContain('declare const config')
-		expect(files[0].dts).toContain('declare const prod')
-		expect(files[0].dts).toContain('declare const apiClient')
-		expect(files[0].dts).toContain('declare const dbString')
-		expect(files[0].dts).toContain('declare const users')
-		expect(files[0].dts).toContain('declare const combinedConfig')
+		expect(files[0].dts).toMatchInlineSnapshot(`
+		  "declare const config: {
+		  	name: string;
+		  	version: string;
+		  	env: string;
+		  	database: {
+		  		host: string;
+		  		port: number;
+		  		database: string;
+		  		maxConnections: number;
+		  	};
+		  	api: {
+		  		baseUrl: string;
+		  		timeout: number;
+		  		headers: {
+		  			"Content-Type": string;
+		  		};
+		  	};
+		  	features: {
+		  		enableCache: boolean;
+		  		enableLogging: boolean;
+		  		maxRetries: number;
+		  	};
+		  };
+		  declare const prod: boolean;
+		  declare const apiClient: {
+		  	baseUrl: string;
+		  	timeout: number;
+		  	endpoints: {
+		  		users: string;
+		  		posts: string;
+		  		comments: string;
+		  	};
+		  	request: (url: string) => Promise<Response>;
+		  };
+		  declare const dbString: string;
+		  declare const users: string;
+		  declare const combinedConfig: {
+		  	client: {
+		  		baseUrl: string;
+		  		timeout: number;
+		  		endpoints: {
+		  			users: string;
+		  			posts: string;
+		  			comments: string;
+		  		};
+		  		request: (url: string) => Promise<Response>;
+		  	};
+		  	db: string;
+		  	name: string;
+		  	version: string;
+		  	env: string;
+		  	database: {
+		  		host: string;
+		  		port: number;
+		  		database: string;
+		  		maxConnections: number;
+		  	};
+		  	api: {
+		  		baseUrl: string;
+		  		timeout: number;
+		  		headers: {
+		  			"Content-Type": string;
+		  		};
+		  	};
+		  	features: {
+		  		enableCache: boolean;
+		  		enableLogging: boolean;
+		  		maxRetries: number;
+		  	};
+		  };
+		  export { users, prod, dbString, config, combinedConfig, apiClient };
+		  "
+		`)
 	})
 
 	test('should handle mixed functions and variables without types in deep structure', async () => {
@@ -785,8 +953,20 @@ describe('inferTypes option', () => {
 			inferTypes: true,
 		})
 
-		expect(files[0].dts).toContain('declare function main')
-		expect(files[0].dts).toContain('declare const finalResult')
+		expect(files[0].dts).toMatchInlineSnapshot(`
+		  "declare function main(): {
+		  	upper: number;
+		  	result: number;
+		  	computed: number;
+		  };
+		  declare const finalResult: {
+		  	upper: number;
+		  	result: number;
+		  	computed: number;
+		  };
+		  export { main, finalResult };
+		  "
+		`)
 	})
 
 	test('should handle circular-like imports with inferTypes', async () => {
@@ -842,11 +1022,16 @@ describe('inferTypes option', () => {
 			inferTypes: true,
 		})
 
-		expect(files[0].dts).toContain('declare function helperA')
-		expect(files[0].dts).toContain('declare function helperB')
-		expect(files[0].dts).toContain('declare function combineResults')
-		expect(files[0].dts).toContain('declare const resultA')
-		expect(files[0].dts).toContain('declare const resultB')
-		expect(files[0].dts).toContain('declare const combined')
+		expect(files[0].dts).toMatchInlineSnapshot(`
+		  "declare function helperA(n: number): number;
+		  declare const resultA: number;
+		  declare function helperB(n: number): number;
+		  declare const resultB: number;
+		  declare function combineResults(): number;
+		  declare const combined: number;
+		  declare function useHelpers(x: number): number;
+		  export { useHelpers, resultB, resultA, helperB, helperA, combined, combineResults };
+		  "
+		`)
 	})
 })

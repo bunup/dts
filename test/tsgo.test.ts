@@ -32,9 +32,13 @@ describe('tsgo option', () => {
 			tsgo: true,
 		})
 
-		expect(files[0].dts).toContain('declare const computedValue: number')
-		expect(files[0].dts).toContain('declare function multiply')
-		expect(files[0].dts).toContain('declare const result: number')
+		expect(files[0].dts).toMatchInlineSnapshot(`
+		  "declare const computedValue: number;
+		  declare function multiply(a: number, b: number): number;
+		  declare const result: number;
+		  export { result, multiply, computedValue };
+		  "
+		`)
 	})
 
 	test('should handle complex types with tsgo', async () => {
@@ -94,11 +98,27 @@ describe('tsgo option', () => {
 			tsgo: true,
 		})
 
-		expect(files[0].dts).toContain('interface User')
-		expect(files[0].dts).toContain('type UserRole')
-		expect(files[0].dts).toContain('interface ApiResponse')
-		expect(files[0].dts).toContain('declare function fetchUser')
-		expect(files[0].dts).toContain('declare function hasRole')
+		expect(files[0].dts).toMatchInlineSnapshot(`
+		  "interface User {
+		  	id: number;
+		  	name: string;
+		  	email: string;
+		  }
+		  type UserRole = "admin" | "user" | "guest";
+		  interface ApiResponse<T> {
+		  	data: T;
+		  	status: number;
+		  	timestamp: number;
+		  }
+		  declare function fetchUser(id: number): Promise<ApiResponse<User>>;
+		  declare function hasRole(user: User, role: UserRole): boolean;
+		  declare const defaultResponse: {
+		  	status: number;
+		  	timestamp: number;
+		  };
+		  export { hasRole, fetchUser, defaultResponse, UserRole, User, ApiResponse };
+		  "
+		`)
 	})
 
 	test('should handle generics with tsgo', async () => {
@@ -134,9 +154,18 @@ describe('tsgo option', () => {
 			tsgo: true,
 		})
 
-		expect(files[0].dts).toContain('declare function identity')
-		expect(files[0].dts).toContain('declare class Box')
-		expect(files[0].dts).toContain('map<U>')
+		expect(files[0].dts).toMatchInlineSnapshot(`
+		  "declare function identity<T>(value: T): T;
+		  declare class Box<T> {
+		  	value: T;
+		  	constructor(value: T);
+		  	map<U>(fn: (value: T) => U): Box<U>;
+		  }
+		  declare const numberBox: Box<number>;
+		  declare const stringBox: Box<string>;
+		  export { stringBox, numberBox, identity, Box };
+		  "
+		`)
 	})
 
 	test('should handle conditional types with tsgo', async () => {
@@ -169,10 +198,15 @@ describe('tsgo option', () => {
 			tsgo: true,
 		})
 
-		expect(files[0].dts).toContain('type IsString')
-		expect(files[0].dts).toContain('type ExtractString')
-		expect(files[0].dts).toContain('type Flatten')
-		expect(files[0].dts).toContain('declare function flatten')
+		expect(files[0].dts).toMatchInlineSnapshot(`
+		  "type IsString<T> = T extends string ? true : false;
+		  type ExtractString<T> = T extends string ? T : never;
+		  type Flatten<T> = T extends Array<infer U> ? U : T;
+		  declare function flatten<T>(value: T): Flatten<T>;
+		  declare const result: number;
+		  export { result, flatten, IsString, Flatten, ExtractString };
+		  "
+		`)
 	})
 
 	test('should handle utility types with tsgo', async () => {
@@ -215,12 +249,22 @@ describe('tsgo option', () => {
 			tsgo: true,
 		})
 
-		expect(files[0].dts).toContain('type PublicUser')
-		expect(files[0].dts).toContain('type PartialUser')
-		expect(files[0].dts).toContain('type RequiredUser')
-		expect(files[0].dts).toContain('type ReadonlyUser')
-		expect(files[0].dts).toContain('type UserKeys')
-		expect(files[0].dts).toContain('declare function createPublicUser')
+		expect(files[0].dts).toMatchInlineSnapshot(`
+		  "interface User {
+		  	id: number;
+		  	name: string;
+		  	email: string;
+		  	password: string;
+		  }
+		  type PublicUser = Omit<User, "password">;
+		  type PartialUser = Partial<User>;
+		  type RequiredUser = Required<PartialUser>;
+		  type ReadonlyUser = Readonly<User>;
+		  type UserKeys = keyof User;
+		  declare function createPublicUser(user: User): PublicUser;
+		  export { createPublicUser, UserKeys, RequiredUser, ReadonlyUser, PublicUser, PartialUser };
+		  "
+		`)
 	})
 
 	test('should handle async/await with tsgo', async () => {
@@ -254,9 +298,13 @@ describe('tsgo option', () => {
 			tsgo: true,
 		})
 
-		expect(files[0].dts).toContain('declare function fetchData')
-		expect(files[0].dts).toContain('declare function processData')
-		expect(files[0].dts).toContain('Promise')
+		expect(files[0].dts).toMatchInlineSnapshot(`
+		  "declare function fetchData(url: string): Promise<unknown>;
+		  declare function processData(): Promise<unknown>;
+		  declare const dataPromise: Promise<unknown>;
+		  export { processData, fetchData, dataPromise };
+		  "
+		`)
 	})
 
 	test('should handle decorators with tsgo (experimentalDecorators)', async () => {
@@ -294,8 +342,14 @@ describe('tsgo option', () => {
 			tsgo: true,
 		})
 
-		expect(files[0].dts).toContain('declare function logged')
-		expect(files[0].dts).toContain('declare class Calculator')
+		expect(files[0].dts).toMatchInlineSnapshot(`
+		  "declare function logged(target: any, propertyKey: string, descriptor: PropertyDescriptor): PropertyDescriptor;
+		  declare class Calculator {
+		  	add(a: number, b: number): number;
+		  }
+		  export { logged, Calculator };
+		  "
+		`)
 	})
 
 	test('should work with both tsgo and inferTypes for complex scenarios', async () => {
@@ -355,12 +409,21 @@ describe('tsgo option', () => {
 			tsgo: true,
 		})
 
-		expect(files[0].dts).toContain('declare function add')
-		expect(files[0].dts).toContain('declare const PI')
-		expect(files[0].dts).toContain('declare function capitalize')
-		expect(files[0].dts).toContain('declare class Calculator')
-		expect(files[0].dts).toContain('declare const calc')
-		expect(files[0].dts).toContain('declare const result')
+		expect(files[0].dts).toMatchInlineSnapshot(`
+		  "declare function add2(a: number, b: number): number;
+		  declare const PI: number;
+		  declare const E: number;
+		  declare function capitalize(str: string): string;
+		  declare const EMPTY_STRING = "";
+		  declare class Calculator {
+		  	add(a: number, b: number): number;
+		  	circleArea(radius: number): number;
+		  }
+		  declare const calc: Calculator;
+		  declare const result: number;
+		  export { result, capitalize, calc, add2 as add, PI, EMPTY_STRING, E, Calculator };
+		  "
+		`)
 	})
 
 	test('should handle enum declarations with tsgo', async () => {
@@ -399,10 +462,22 @@ describe('tsgo option', () => {
 			tsgo: true,
 		})
 
-		expect(files[0].dts).toContain('enum Status')
-		expect(files[0].dts).toContain('enum HttpStatus')
-		expect(files[0].dts).toContain('declare function getStatusMessage')
-		expect(files[0].dts).toContain('declare const currentStatus')
+		expect(files[0].dts).toMatchInlineSnapshot(`
+		  "declare enum Status {
+		  	Active = 0,
+		  	Inactive = 1,
+		  	Pending = 2
+		  }
+		  declare enum HttpStatus {
+		  	OK = 200,
+		  	NotFound = 404,
+		  	ServerError = 500
+		  }
+		  declare function getStatusMessage(status: Status): "Active" | "Not Active";
+		  declare const currentStatus: unknown;
+		  export { getStatusMessage, currentStatus, Status, HttpStatus };
+		  "
+		`)
 	})
 
 	test('should handle deeply nested file structure with tsgo', async () => {
@@ -494,13 +569,25 @@ describe('tsgo option', () => {
 			tsgo: true,
 		})
 
-		expect(files[0].dts).toContain('interface User')
-		expect(files[0].dts).toContain('interface Post')
-		expect(files[0].dts).toContain('declare function createUser')
-		expect(files[0].dts).toContain('declare function createPost')
-		expect(files[0].dts).toContain('declare function handleCreateUser')
-		expect(files[0].dts).toContain('declare const defaultUser')
-		expect(files[0].dts).toContain('declare const samplePost')
+		expect(files[0].dts).toMatchInlineSnapshot(`
+		  "interface User2 {
+		  	id: number;
+		  	email: string;
+		  }
+		  interface Post {
+		  	id: number;
+		  	title: string;
+		  	author: User2;
+		  }
+		  declare function createUser(email: string): User2;
+		  declare const defaultUser: User2;
+		  declare function createPost(title: string): Post;
+		  declare const samplePost: Post;
+		  declare function handleCreateUser(email: string): import("../..").User;
+		  declare const controllerDefault: import("../..").User;
+		  export { samplePost, handleCreateUser, defaultUser, createUser, createPost, controllerDefault, User2 as User, Post };
+		  "
+		`)
 	})
 
 	test('should handle very deep imports (7+ levels) with tsgo', async () => {
@@ -572,8 +659,12 @@ describe('tsgo option', () => {
 			tsgo: true,
 		})
 
-		expect(files[0].dts).toContain('declare const finalComputed')
-		expect(files[0].dts).toContain('declare function getFinalValue')
+		expect(files[0].dts).toMatchInlineSnapshot(`
+		  "declare const finalComputed: number;
+		  declare function getFinalValue(): number;
+		  export { getFinalValue, finalComputed };
+		  "
+		`)
 	})
 
 	test('should handle functions without return types with tsgo', async () => {
@@ -667,12 +758,28 @@ describe('tsgo option', () => {
 			tsgo: true,
 		})
 
-		expect(files[0].dts).toContain('declare function processNumber')
-		expect(files[0].dts).toContain('declare function processString')
-		expect(files[0].dts).toContain('declare function processArray')
-		expect(files[0].dts).toContain('declare const numResult')
-		expect(files[0].dts).toContain('declare const strResult')
-		expect(files[0].dts).toContain('declare const arrResult')
+		expect(files[0].dts).toMatchInlineSnapshot(`
+		  "declare function processNumber(n: number): any;
+		  declare function processString(str: string): {
+		  	reversed: string;
+		  	titled: string;
+		  };
+		  declare function processArray(arr: number[]): {
+		  	chunks: any[];
+		  	unique: number[];
+		  };
+		  declare const numResult: any;
+		  declare const strResult: {
+		  	reversed: string;
+		  	titled: string;
+		  };
+		  declare const arrResult: {
+		  	chunks: any[];
+		  	unique: number[];
+		  };
+		  export { strResult, processString, processNumber, processArray, numResult, arrResult };
+		  "
+		`)
 	})
 
 	test('should handle variables without explicit types with tsgo', async () => {
@@ -765,13 +872,69 @@ describe('tsgo option', () => {
 			tsgo: true,
 		})
 
-		expect(files[0].dts).toContain('declare const config')
-		expect(files[0].dts).toContain('declare const name')
-		expect(files[0].dts).toContain('declare const network')
-		expect(files[0].dts).toContain('declare const urls')
-		expect(files[0].dts).toContain('declare const meta')
-		expect(files[0].dts).toContain('declare const fullConfig')
-		expect(files[0].dts).toContain('declare const constants')
+		expect(files[0].dts).toMatchInlineSnapshot(`
+		  "declare const config: {
+		  	app: {
+		  		name: string;
+		  		version: string;
+		  	};
+		  	network: {
+		  		apiUrl: string;
+		  		retries: number;
+		  	};
+		  	features: {
+		  		caching: boolean;
+		  		analytics: boolean;
+		  	};
+		  };
+		  declare const name: string;
+		  declare const network: {
+		  	apiUrl: string;
+		  	retries: number;
+		  };
+		  declare const urls: {
+		  	users: string;
+		  	posts: string;
+		  };
+		  declare const meta: {
+		  	version: string;
+		  	endpoints: {
+		  		users: string;
+		  		posts: string;
+		  	};
+		  };
+		  declare const fullConfig: {
+		  	app: {
+		  		name: string;
+		  		version: string;
+		  	};
+		  	network: {
+		  		apiUrl: string;
+		  		retries: number;
+		  	};
+		  	features: {
+		  		caching: boolean;
+		  		analytics: boolean;
+		  	};
+		  	urls: {
+		  		users: string;
+		  		posts: string;
+		  	};
+		  	meta: {
+		  		version: string;
+		  		endpoints: {
+		  			users: string;
+		  			posts: string;
+		  		};
+		  	};
+		  };
+		  declare const constants: {
+		  	name: string;
+		  	version: string;
+		  };
+		  export { urls, network, name, meta, fullConfig, constants, config };
+		  "
+		`)
 	})
 
 	test('should handle cross-module imports with tsgo', async () => {
@@ -839,9 +1002,13 @@ describe('tsgo option', () => {
 			tsgo: true,
 		})
 
-		expect(files[0].dts).toContain('declare function combined')
-		expect(files[0].dts).toContain('declare const finalValue')
-		expect(files[0].dts).toContain('declare const finalResult')
+		expect(files[0].dts).toMatchInlineSnapshot(`
+		  "declare function combined(x: number): number;
+		  declare const finalValue: number;
+		  declare const finalResult: number;
+		  export { finalValue, finalResult, combined };
+		  "
+		`)
 	})
 
 	test('should handle complex nested structure with mixed types using tsgo', async () => {
@@ -931,8 +1098,69 @@ describe('tsgo option', () => {
 			tsgo: true,
 		})
 
-		expect(files[0].dts).toContain('declare const main')
-		expect(files[0].dts).toContain('declare function getMainConfig')
-		expect(files[0].dts).toContain('declare const mainConfig')
+		expect(files[0].dts).toMatchInlineSnapshot(`
+		  "declare const main: {
+		  	top: {
+		  		enabled: boolean;
+		  		name: string;
+		  		version: string;
+		  	};
+		  	processed: {
+		  		processed: boolean;
+		  		config: {
+		  			enabled: boolean;
+		  			name: string;
+		  			version: string;
+		  		};
+		  	};
+		  	custom: {
+		  		enabled: boolean;
+		  		name: string;
+		  		version: string;
+		  	};
+		  };
+		  declare function getMainConfig(): {
+		  	top: {
+		  		enabled: boolean;
+		  		name: string;
+		  		version: string;
+		  	};
+		  	processed: {
+		  		processed: boolean;
+		  		config: {
+		  			enabled: boolean;
+		  			name: string;
+		  			version: string;
+		  		};
+		  	};
+		  	custom: {
+		  		enabled: boolean;
+		  		name: string;
+		  		version: string;
+		  	};
+		  };
+		  declare const mainConfig: {
+		  	top: {
+		  		enabled: boolean;
+		  		name: string;
+		  		version: string;
+		  	};
+		  	processed: {
+		  		processed: boolean;
+		  		config: {
+		  			enabled: boolean;
+		  			name: string;
+		  			version: string;
+		  		};
+		  	};
+		  	custom: {
+		  		enabled: boolean;
+		  		name: string;
+		  		version: string;
+		  	};
+		  };
+		  export { mainConfig, main, getMainConfig };
+		  "
+		`)
 	})
 })
