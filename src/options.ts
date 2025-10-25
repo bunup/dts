@@ -60,6 +60,15 @@ export type GenerateDtsOptions = {
 	 * Ensure `@typescript/native-preview` is installed as dev dependency: `bun add --dev @typescript/native-preview`
 	 */
 	tsgo?: boolean
+	/**
+	 * The root directory for the project.
+	 *
+	 * It is computed to be the first common ancestor of all entrypoint files.
+	 *
+	 * @example
+	 * root: './src'
+	 */
+	root?: string
 }
 
 export type GenerateDtsResultFile = {

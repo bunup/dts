@@ -195,6 +195,7 @@ export async function generateDts(
 			plugins: [fakeJsPlugin],
 			packages: 'external',
 			minify: options.minify,
+			root: options.root,
 			throw: false,
 			tsconfig: options.preferredTsconfig
 				? path.resolve(cwd, options.preferredTsconfig)
