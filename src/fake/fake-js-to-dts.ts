@@ -45,7 +45,7 @@ export async function fakeJsToDts(fakeJsContent: string): Promise<string> {
 					// This is important when `splitting` is enabled, as
 					// the import paths would be referencing chunk files with .js extensions
 					// that need to be removed for proper type declarations
-					statementText.replace(/.(?:mjs|cjs|js)\b/g, ''),
+					statementText.replace(/\.(mjs|cjs|js)\b/g, ''),
 				)
 
 				continue

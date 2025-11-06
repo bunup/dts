@@ -371,4 +371,42 @@ describe('Output Path Tests', () => {
 			}
 		}
 	})
+	test('should not remove "js" from package names when removing file extensions', async () => {
+		createProject({
+			'node_modules/aws-cdk-lib/package.json': `
+				{
+					"name": "aws-cdk-lib",
+					"version": "2.0.0",
+					"exports": {
+						"./aws-lambda-nodejs": {
+							"types": "./aws-lambda-nodejs/index.d.ts",
+							"import": "./aws-lambda-nodejs/index.js"
+						}
+					}
+				}
+			`,
+			'node_modules/aws-cdk-lib/aws-lambda-nodejs/index.d.ts': `
+				export interface NodejsFunctionProps {
+					runtime: string;
+				}
+				export class NodejsFunction {
+					constructor(props: NodejsFunctionProps);
+				}
+			`,
+			'src/index.ts': `
+				import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
+				export const hello: NodejsFunction | null = null;
+			`,
+		})
+
+		const files = await runGenerateDts(['src/index.ts'])
+
+		expect(files).toHaveLength(1)
+		const output = files[0]
+
+		expect(output.dts).toBeDefined()
+		expect(output.dts).toContain('aws-lambda-nodejs')
+		expect(output.dts).not.toContain('aws-lambda-node"')
+		expect(output.dts).not.toContain("aws-lambda-node'")
+	})
 })
