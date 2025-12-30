@@ -570,22 +570,22 @@ describe('tsgo option', () => {
 		})
 
 		expect(files[0].dts).toMatchInlineSnapshot(`
-		  "interface User2 {
+		  "interface User {
 		  	id: number;
 		  	email: string;
 		  }
 		  interface Post {
 		  	id: number;
 		  	title: string;
-		  	author: User2;
+		  	author: User;
 		  }
-		  declare function createUser(email: string): User2;
-		  declare const defaultUser: User2;
+		  declare function createUser(email: string): User;
+		  declare const defaultUser: User;
 		  declare function createPost(title: string): Post;
 		  declare const samplePost: Post;
-		  declare function handleCreateUser(email: string): import("../..").User;
-		  declare const controllerDefault: import("../..").User;
-		  export { samplePost, handleCreateUser, defaultUser, createUser, createPost, controllerDefault, User2 as User, Post };
+		  declare function handleCreateUser(email: string): User;
+		  declare const controllerDefault: User;
+		  export { samplePost, handleCreateUser, defaultUser, createUser, createPost, controllerDefault, User, Post };
 		  "
 		`)
 	})

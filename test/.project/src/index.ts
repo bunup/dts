@@ -1,17 +1,19 @@
-export interface Config {
-	debug: boolean
-}
 
-export const VERSION = '1.0.0'
+					export interface Config {
+						debug: boolean
+					}
 
-export default class {
-	config: Config
+					export const VERSION = '1.0.0'
 
-	constructor(config: Config) {
-		this.config = config
-	}
+					export default class {
+						config: Config
 
-	run() {
-		console.log('running with version', VERSION)
-	}
-}
+						constructor(config: Config) {
+							this.config = config
+						}
+
+						run() {
+							console.log('running with version', VERSION)
+						}
+					}
+				
