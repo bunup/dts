@@ -21,21 +21,26 @@ export async function runTypescriptCompiler(
 
 	const dist = await mkdtemp(path.join(tmpdir(), 'bunup-dts-'))
 
-	const proc = Bun.spawn([
-		executable,
-		'--noEmit',
-		'false',
-		'--declaration',
-		'--emitDeclarationOnly',
-		'--isolatedDeclarations',
-		'false',
-		...(tsconfig ? ['-p', tsconfig] : []),
-		'--outDir',
-		dist,
-		'--rootDir',
-		root,
-		'--noCheck',
-	])
+	const proc = Bun.spawn(
+		[
+			executable,
+			'--noEmit',
+			'false',
+			'--declaration',
+			'--emitDeclarationOnly',
+			'--isolatedDeclarations',
+			'false',
+			'--rootDir',
+			root,
+			...(tsconfig ? ['-p', tsconfig] : []),
+			'--outDir',
+			dist,
+			'--noCheck',
+		],
+		{
+			cwd: root,
+		},
+	)
 
 	const exitCode = await proc.exited
 
