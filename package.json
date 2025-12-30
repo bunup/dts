@@ -31,7 +31,6 @@
 		"lint": "biome check .",
 		"lint:fix": "biome check --write .",
 		"release": "bumpp --commit --push --tag",
-		"play": "bun run playground/play.ts",
 		"test": "bun test",
 		"test:coverage": "bun test --coverage",
 		"test:watch": "bun test --watch",

@@ -75,6 +75,13 @@ export async function generateDts(
 		)
 	}
 
+	const finalEntryPoints = [
+		...filterTypescriptFiles(resolvedEntrypoints).map((entry) =>
+			path.resolve(path.join(cwd, entry)),
+		),
+		...filterTypescriptFiles(absoluteEntrypoints),
+	]
+
 	const collectedErrors: IsolatedDeclarationError[] = []
 
 	const resolver = createResolver({
@@ -182,12 +189,7 @@ export async function generateDts(
 		}
 
 		const result = await Bun.build({
-			entrypoints: [
-				...filterTypescriptFiles(resolvedEntrypoints).map((entry) =>
-					path.resolve(path.join(cwd, entry)),
-				),
-				...filterTypescriptFiles(absoluteEntrypoints),
-			],
+			entrypoints: finalEntryPoints,
 			format: 'esm',
 			target: 'node',
 			naming,
@@ -203,7 +205,43 @@ export async function generateDts(
 		})
 
 		if (!result.success) {
-			throw new Error(`DTS bundling failed: ${result.logs}`)
+			const logsStr = `${result.logs}`
+
+			if (
+				logsStr.includes('ENOENT: no such file or directory, open') &&
+				logsStr.endsWith(".d.ts'")
+			) {
+				let errorMsg = `One or more of your entrypoints are not included in your TypeScript configuration.\n\n`
+
+				if (tsconfig.filepath) {
+					errorMsg += `Using: ${path.relative(cwd, tsconfig.filepath)}\n\n`
+				}
+
+				const currentInclude = tsconfig.config?.include
+
+				if (
+					currentInclude &&
+					Array.isArray(currentInclude) &&
+					currentInclude.length > 0
+				) {
+					errorMsg += `Current "include" patterns:\n`
+					for (const pattern of currentInclude) {
+						errorMsg += `  - "${pattern}"\n`
+					}
+					errorMsg += `\nEnsure all your entrypoints match these patterns, or add them explicitly.\n`
+				} else {
+					errorMsg +=
+						`Add an "include" field to your tsconfig.json:\n` +
+						`  {\n` +
+						`    "include": ["src/**/*"]\n` +
+						`  }\n\n` +
+						`Make sure the pattern matches all your entrypoint files.\n`
+				}
+
+				throw new Error(errorMsg)
+			}
+
+			throw new Error(logsStr)
 		}
 
 		const outputs = result.outputs.filter(
@@ -246,11 +284,11 @@ export async function generateDts(
 				continue
 			}
 
-			if (treeshakedDts.errors.length && !treeshakedDts.code) {
-				throw new Error(
-					`DTS treeshaking failed for ${entrypoint || outputPath}\n\n${JSON.stringify(treeshakedDts.errors, null, 2)}`,
-				)
-			}
+			// if (treeshakedDts.errors.length && !treeshakedDts.code) {
+			// 	throw new Error(
+			// 		`DTS treeshaking failed for ${entrypoint || outputPath}\n\n${JSON.stringify(treeshakedDts.errors, null, 2)}`,
+			// 	)
+			// }
 
 			bundledFiles.push({
 				kind: output.kind === 'entry-point' ? 'entry-point' : 'chunk',

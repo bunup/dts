@@ -1,4 +1,5 @@
 import { parse } from '@babel/parser'
+import type * as t from '@babel/types'
 import type {
 	Expression,
 	ExpressionStatement,
@@ -66,6 +67,20 @@ export async function fakeJsToDts(fakeJsContent: string): Promise<string> {
 
 		if (statement.type === 'VariableDeclaration') {
 			for (const declaration of statement.declarations) {
+				if (declaration.id.type === 'Identifier') {
+					const init = declaration.init
+
+					if (init?.type === 'Identifier') {
+						resultParts.push(`type ${declaration.id.name} = ${init.name};`)
+					} else if (init?.type === 'MemberExpression') {
+						const memberExpr = convertMemberExpressionToComputed(init)
+						resultParts.push(`type ${declaration.id.name} = ${memberExpr};`)
+					} else if (init?.type === 'CallExpression') {
+						const callExpr = convertCallExpressionToString(init)
+						resultParts.push(`type ${declaration.id.name} = ${callExpr};`)
+					}
+				}
+
 				if (declaration.init?.type === 'ArrayExpression') {
 					const dtsContent = processTokenArray(declaration.init)
 					if (dtsContent) {
@@ -77,6 +92,57 @@ export async function fakeJsToDts(fakeJsContent: string): Promise<string> {
 	}
 
 	return resultParts.join('\n')
+}
+
+function convertMemberExpressionToComputed(node: t.MemberExpression): string {
+	let object = ''
+
+	if (node.object.type === 'Identifier') {
+		object = node.object.name
+	} else if (node.object.type === 'MemberExpression') {
+		object = convertMemberExpressionToComputed(node.object)
+	}
+
+	let property = ''
+	if (node.property.type === 'Identifier') {
+		property = `'${node.property.name}'`
+	} else if (node.property.type === 'StringLiteral') {
+		property = `'${node.property.value}'`
+	} else if (node.property.type === 'NumericLiteral') {
+		property = String(node.property.value)
+	}
+
+	return `${object}[${property}]`
+}
+
+function convertCallExpressionToString(node: t.CallExpression): string {
+	let callee = ''
+
+	if (node.callee.type === 'Identifier') {
+		callee = node.callee.name
+	} else if (node.callee.type === 'MemberExpression') {
+		callee = convertMemberExpressionToComputed(node.callee)
+	}
+
+	// Convert arguments
+	const args = node.arguments
+		.map((arg) => {
+			if (arg.type === 'Identifier') {
+				return arg.name
+			} else if (arg.type === 'StringLiteral') {
+				return `'${arg.value}'`
+			} else if (arg.type === 'NumericLiteral') {
+				return String(arg.value)
+			} else if (arg.type === 'MemberExpression') {
+				return convertMemberExpressionToComputed(arg)
+			}
+			// Add more argument types as needed
+			return ''
+		})
+		.filter(Boolean)
+		.join(', ')
+
+	return `${callee}(${args})`
 }
 
 function processTokenArray(arrayLiteral: Node): string | null {

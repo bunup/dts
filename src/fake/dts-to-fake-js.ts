@@ -23,7 +23,11 @@ import {
 	TOKENIZE_RE,
 	TYPE_WORD_RE,
 } from '../re'
-import { generateVarName, isNullOrUndefined } from '../utils'
+import {
+	generateRandomString,
+	generateVarName,
+	isNullOrUndefined,
+} from '../utils'
 import { escapeNewlinesAndTabs } from './utils'
 
 export async function dtsToFakeJs(dtsContent: string): Promise<string> {
@@ -102,10 +106,14 @@ export async function dtsToFakeJs(dtsContent: string): Promise<string> {
 			)
 		}
 
-		const tokens = tokenizeText(
+		const { tokens, extras } = tokenizeText(
 			statementTextWithCommentsAttached,
 			referencedNames,
 		)
+
+		for (const extra of extras) {
+			result.push(extra)
+		}
 
 		result.push(`var ${jsVarName} = [${tokens.join(', ')}];`)
 
@@ -153,23 +161,140 @@ function jsifyImportExport(text: string): string {
 	return result
 }
 
-function tokenizeText(text: string, referencedNames: Set<string>): string[] {
+function tokenizeText(
+	text: string,
+	referencedNames: Set<string>,
+): { tokens: string[]; extras: string[] } {
 	const tokens = []
+	const extras = []
 
 	let match: RegExpExecArray | null
+
 	TOKENIZE_RE.lastIndex = 0
+
 	while (true) {
 		match = TOKENIZE_RE.exec(text)
 		if (match === null) break
 
 		const token = match[0]
 
-		if (isLikelyVariableOrTypeName(token) || referencedNames.has(token)) {
+		if (token.startsWith('import(')) {
+			const staticImport = convertDynamicImportToStatic(token)
+			extras.push(staticImport.declarations)
+			tokens.push(staticImport.variableName)
+		} else if (
+			isLikelyVariableOrTypeName(token) ||
+			referencedNames.has(token)
+		) {
 			tokens.push(token)
 		} else {
 			tokens.push(JSON.stringify(escapeNewlinesAndTabs(token)))
 		}
 	}
 
-	return tokens
+	return { tokens, extras }
+}
+
+function convertDynamicImportToStatic(dynamicImport: string): {
+	declarations: string
+	variableName: string
+} {
+	const importMatch = dynamicImport.match(
+		/^import\s*\(\s*(['"`])(.+?)\1\s*\)((?:\.[a-zA-Z_$][a-zA-Z0-9_$]*|\[(['"`]).+?\4\])*)$/,
+	)
+	if (!importMatch) {
+		throw new Error('Invalid dynamic import format')
+	}
+	const modulePath = importMatch[2]
+	const propertyAccess = importMatch[3] || ''
+
+	if (!propertyAccess) {
+		const importIdentifier = `import_${generateRandomString()}`
+		return {
+			declarations: `import * as ${importIdentifier} from '${modulePath}';`,
+			variableName: importIdentifier,
+		}
+	}
+
+	const firstProperty = extractFirstProperty(propertyAccess)
+	const remainingAccess = propertyAccess.slice(firstProperty.accessLength)
+
+	if (firstProperty.isValidIdentifier) {
+		const uniqueName = `${createValidIdentifier(firstProperty.name)}_${generateRandomString()}`
+		let declarations = `import { ${firstProperty.name} as ${uniqueName} } from '${modulePath}';`
+		let finalVariable = uniqueName
+
+		if (remainingAccess) {
+			const lastProperty = extractLastProperty(remainingAccess)
+			const varName = `${createValidIdentifier(lastProperty)}_${generateRandomString()}`
+			declarations += `\nvar ${varName} = ${uniqueName}${remainingAccess};`
+			finalVariable = varName
+		}
+
+		return {
+			declarations,
+			variableName: finalVariable,
+		}
+	} else {
+		const importIdentifier = `import_${generateRandomString()}`
+		const lastProperty = extractLastProperty(propertyAccess)
+		const varName = `${createValidIdentifier(lastProperty)}_${generateRandomString()}`
+		const declarations = `import * as ${importIdentifier} from '${modulePath}';\nvar ${varName} = ${importIdentifier}${propertyAccess};`
+
+		return {
+			declarations,
+			variableName: varName,
+		}
+	}
+}
+
+function extractFirstProperty(propertyAccess: string): {
+	name: string
+	accessLength: number
+	isValidIdentifier: boolean
+} {
+	const dotMatch = propertyAccess.match(/^\.([a-zA-Z_$][a-zA-Z0-9_$]*)/)
+	if (dotMatch) {
+		return {
+			name: dotMatch[1] as string,
+			accessLength: dotMatch[0].length,
+			isValidIdentifier: true,
+		}
+	}
+
+	const bracketMatch = propertyAccess.match(/^\[(['"`])(.+?)\1\]/)
+	if (bracketMatch) {
+		const propName = bracketMatch[2]
+		const isValid = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(propName as string)
+		return {
+			name: propName as string,
+			accessLength: bracketMatch[0].length,
+			isValidIdentifier: isValid,
+		}
+	}
+
+	throw new Error('Invalid property access')
+}
+
+function extractLastProperty(propertyAccess: string): string {
+	const bracketMatch = propertyAccess.match(/\[(['"`])(.+?)\1\]$/)
+	if (bracketMatch) {
+		return bracketMatch[2] as string
+	}
+	const dotMatch = propertyAccess.match(/\.([a-zA-Z_$][a-zA-Z0-9_$]*)$/)
+	if (dotMatch) {
+		return dotMatch[1] as string
+	}
+	return 'value'
+}
+
+function createValidIdentifier(name: string): string {
+	let identifier = name.replace(/[^a-zA-Z0-9_$]/g, '_')
+	if (/^\d/.test(identifier)) {
+		identifier = `_${identifier}`
+	}
+	if (!identifier) {
+		identifier = '_value'
+	}
+	return identifier
 }
