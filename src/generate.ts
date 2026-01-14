@@ -259,10 +259,12 @@ export async function generateDts(
 
 			const entrypoint =
 				output.kind === 'entry-point'
-					? getOriginalEntrypointFromOutputPath(
-							result.metafile,
-							output.path,
-							cwd,
+					? cleanPath(
+							getOriginalEntrypointFromOutputPath(
+								result.metafile,
+								output.path,
+								cwd,
+							),
 						)
 					: undefined
 
