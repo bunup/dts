@@ -23,12 +23,8 @@ import {
 	TOKENIZE_RE,
 	TYPE_WORD_RE,
 } from '../re'
-import {
-	generateRandomString,
-	generateVarName,
-	isNullOrUndefined,
-} from '../utils'
-import { escapeNewlinesAndTabs } from './utils'
+import { generateVarName, isNullOrUndefined } from '../utils'
+import { escapeNewlinesAndTabs, generateFixedStringFromString } from './utils'
 
 export async function dtsToFakeJs(dtsContent: string): Promise<string> {
 	const parsed = parse(dtsContent, {
@@ -38,6 +34,7 @@ export async function dtsToFakeJs(dtsContent: string): Promise<string> {
 
 	const referencedNames = new Set<string>()
 	const exportedNames = new Set<string>()
+	const staticImportedVars = new Set<string>()
 	const result = []
 
 	for (const name of getAllImportNames(parsed.program.body)) {
@@ -109,6 +106,7 @@ export async function dtsToFakeJs(dtsContent: string): Promise<string> {
 		const { tokens, extras } = tokenizeText(
 			statementTextWithCommentsAttached,
 			referencedNames,
+			staticImportedVars,
 		)
 
 		for (const extra of extras) {
@@ -164,6 +162,7 @@ function jsifyImportExport(text: string): string {
 function tokenizeText(
 	text: string,
 	referencedNames: Set<string>,
+	staticImportedVars: Set<string>,
 ): { tokens: string[]; extras: string[] } {
 	const tokens = []
 	const extras = []
@@ -180,8 +179,11 @@ function tokenizeText(
 
 		if (token.startsWith('import(')) {
 			const staticImport = convertDynamicImportToStatic(token)
-			extras.push(staticImport.declarations)
 			tokens.push(staticImport.variableName)
+			if (!staticImportedVars.has(staticImport.variableName)) {
+				extras.push(staticImport.declarations)
+				staticImportedVars.add(staticImport.variableName)
+			}
 		} else if (
 			isLikelyVariableOrTypeName(token) ||
 			referencedNames.has(token)
@@ -209,7 +211,7 @@ function convertDynamicImportToStatic(dynamicImport: string): {
 	const propertyAccess = importMatch[3] || ''
 
 	if (!propertyAccess) {
-		const importIdentifier = `import_${generateRandomString()}`
+		const importIdentifier = `import_${generateFixedStringFromString(modulePath ?? 'import')}`
 		return {
 			declarations: `import * as ${importIdentifier} from '${modulePath}';`,
 			variableName: importIdentifier,
@@ -220,13 +222,13 @@ function convertDynamicImportToStatic(dynamicImport: string): {
 	const remainingAccess = propertyAccess.slice(firstProperty.accessLength)
 
 	if (firstProperty.isValidIdentifier) {
-		const uniqueName = `${createValidIdentifier(firstProperty.name)}_${generateRandomString()}`
+		const uniqueName = `${createValidIdentifier(firstProperty.name)}_${generateFixedStringFromString(firstProperty.name)}`
 		let declarations = `import { ${firstProperty.name} as ${uniqueName} } from '${modulePath}';`
 		let finalVariable = uniqueName
 
 		if (remainingAccess) {
 			const lastProperty = extractLastProperty(remainingAccess)
-			const varName = `${createValidIdentifier(lastProperty)}_${generateRandomString()}`
+			const varName = `${createValidIdentifier(lastProperty)}_${generateFixedStringFromString(lastProperty)}`
 			declarations += `\nvar ${varName} = ${uniqueName}${remainingAccess};`
 			finalVariable = varName
 		}
@@ -236,9 +238,9 @@ function convertDynamicImportToStatic(dynamicImport: string): {
 			variableName: finalVariable,
 		}
 	} else {
-		const importIdentifier = `import_${generateRandomString()}`
+		const importIdentifier = `import_${generateFixedStringFromString(modulePath ?? 'import')}`
 		const lastProperty = extractLastProperty(propertyAccess)
-		const varName = `${createValidIdentifier(lastProperty)}_${generateRandomString()}`
+		const varName = `${createValidIdentifier(lastProperty)}_${generateFixedStringFromString(lastProperty)}`
 		const declarations = `import * as ${importIdentifier} from '${modulePath}';\nvar ${varName} = ${importIdentifier}${propertyAccess};`
 
 		return {
