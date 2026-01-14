@@ -23,6 +23,7 @@ import {
 	getDeclarationExtensionFromJsExtension,
 	getExtension,
 	getFilesFromGlobs,
+	getOriginalEntrypointFromOutputPath,
 	isTypeScriptFile,
 	loadTsConfig,
 	minifyDts,
@@ -202,6 +203,7 @@ export async function generateDts(
 			tsconfig: options.preferredTsconfig
 				? path.resolve(cwd, options.preferredTsconfig)
 				: undefined,
+			metafile: true,
 		})
 
 		if (!result.success) {
@@ -257,7 +259,11 @@ export async function generateDts(
 
 			const entrypoint =
 				output.kind === 'entry-point'
-					? entrypoints[bundledFiles.length]
+					? getOriginalEntrypointFromOutputPath(
+							result.metafile,
+							output.path,
+							cwd,
+						)
 					: undefined
 
 			const chunkFileName =
@@ -284,11 +290,11 @@ export async function generateDts(
 				continue
 			}
 
-			// if (treeshakedDts.errors.length && !treeshakedDts.code) {
-			// 	throw new Error(
-			// 		`DTS treeshaking failed for ${entrypoint || outputPath}\n\n${JSON.stringify(treeshakedDts.errors, null, 2)}`,
-			// 	)
-			// }
+			if (treeshakedDts.errors.length && !treeshakedDts.code) {
+				throw new Error(
+					`DTS treeshaking failed for ${entrypoint || outputPath}\n\n${JSON.stringify(treeshakedDts.errors, null, 2)}`,
+				)
+			}
 
 			bundledFiles.push({
 				kind: output.kind === 'entry-point' ? 'entry-point' : 'chunk',
