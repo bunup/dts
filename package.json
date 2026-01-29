@@ -27,7 +27,7 @@
 	"scripts": {
 		"build": "bunup --exports --unused",
 		"dev": "bunup --watch",
-		"postinstall": "bun simple-git-hooks",
+		"prepare": "bun simple-git-hooks",
 		"lint": "biome check .",
 		"lint:fix": "biome check --write .",
 		"release": "bumpp --commit --push --tag",
