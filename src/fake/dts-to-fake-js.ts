@@ -24,7 +24,7 @@ import {
 	TYPE_WORD_RE,
 } from '../re'
 import { generateVarName, isNullOrUndefined } from '../utils'
-import { escapeNewlinesAndTabs, generateFixedStringFromString } from './utils'
+import { convertDynamicImportToStatic, escapeNewlinesAndTabs } from './utils'
 
 export async function dtsToFakeJs(dtsContent: string): Promise<string> {
 	const parsed = parse(dtsContent, {
@@ -86,6 +86,17 @@ export async function dtsToFakeJs(dtsContent: string): Promise<string> {
 			const jsImportExport = jsifyImportExport(statementText)
 
 			result.push(jsImportExport)
+			continue
+		}
+
+		if (statement.type === 'TSExportAssignment') {
+			if (statement.expression.type === 'Identifier') {
+				result.push(`export { ${statement.expression.name} as default }`)
+			} else if (statement.expression.start && statement.expression.end) {
+				result.push(
+					`export default ${dtsContent.substring(statement.expression.start, statement.expression.end)}`,
+				)
+			}
 			continue
 		}
 
@@ -195,108 +206,4 @@ function tokenizeText(
 	}
 
 	return { tokens, extras }
-}
-
-function convertDynamicImportToStatic(dynamicImport: string): {
-	declarations: string
-	variableName: string
-} {
-	const importMatch = dynamicImport.match(
-		/^import\s*\(\s*(['"`])(.+?)\1\s*\)((?:\.[a-zA-Z_$][a-zA-Z0-9_$]*|\[(['"`]).+?\4\])*)$/,
-	)
-	if (!importMatch) {
-		throw new Error('Invalid dynamic import format')
-	}
-	const modulePath = importMatch[2]
-	const propertyAccess = importMatch[3] || ''
-
-	if (!propertyAccess) {
-		const importIdentifier = `import_${generateFixedStringFromString(modulePath ?? 'import')}`
-		return {
-			declarations: `import * as ${importIdentifier} from '${modulePath}';`,
-			variableName: importIdentifier,
-		}
-	}
-
-	const firstProperty = extractFirstProperty(propertyAccess)
-	const remainingAccess = propertyAccess.slice(firstProperty.accessLength)
-
-	if (firstProperty.isValidIdentifier) {
-		const uniqueName = `${createValidIdentifier(firstProperty.name)}_${generateFixedStringFromString(firstProperty.name)}`
-		let declarations = `import { ${firstProperty.name} as ${uniqueName} } from '${modulePath}';`
-		let finalVariable = uniqueName
-
-		if (remainingAccess) {
-			const lastProperty = extractLastProperty(remainingAccess)
-			const varName = `${createValidIdentifier(lastProperty)}_${generateFixedStringFromString(lastProperty)}`
-			declarations += `\nvar ${varName} = ${uniqueName}${remainingAccess};`
-			finalVariable = varName
-		}
-
-		return {
-			declarations,
-			variableName: finalVariable,
-		}
-	} else {
-		const importIdentifier = `import_${generateFixedStringFromString(modulePath ?? 'import')}`
-		const lastProperty = extractLastProperty(propertyAccess)
-		const varName = `${createValidIdentifier(lastProperty)}_${generateFixedStringFromString(lastProperty)}`
-		const declarations = `import * as ${importIdentifier} from '${modulePath}';\nvar ${varName} = ${importIdentifier}${propertyAccess};`
-
-		return {
-			declarations,
-			variableName: varName,
-		}
-	}
-}
-
-function extractFirstProperty(propertyAccess: string): {
-	name: string
-	accessLength: number
-	isValidIdentifier: boolean
-} {
-	const dotMatch = propertyAccess.match(/^\.([a-zA-Z_$][a-zA-Z0-9_$]*)/)
-	if (dotMatch) {
-		return {
-			name: dotMatch[1] as string,
-			accessLength: dotMatch[0].length,
-			isValidIdentifier: true,
-		}
-	}
-
-	const bracketMatch = propertyAccess.match(/^\[(['"`])(.+?)\1\]/)
-	if (bracketMatch) {
-		const propName = bracketMatch[2]
-		const isValid = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(propName as string)
-		return {
-			name: propName as string,
-			accessLength: bracketMatch[0].length,
-			isValidIdentifier: isValid,
-		}
-	}
-
-	throw new Error('Invalid property access')
-}
-
-function extractLastProperty(propertyAccess: string): string {
-	const bracketMatch = propertyAccess.match(/\[(['"`])(.+?)\1\]$/)
-	if (bracketMatch) {
-		return bracketMatch[2] as string
-	}
-	const dotMatch = propertyAccess.match(/\.([a-zA-Z_$][a-zA-Z0-9_$]*)$/)
-	if (dotMatch) {
-		return dotMatch[1] as string
-	}
-	return 'value'
-}
-
-function createValidIdentifier(name: string): string {
-	let identifier = name.replace(/[^a-zA-Z0-9_$]/g, '_')
-	if (/^\d/.test(identifier)) {
-		identifier = `_${identifier}`
-	}
-	if (!identifier) {
-		identifier = '_value'
-	}
-	return identifier
 }

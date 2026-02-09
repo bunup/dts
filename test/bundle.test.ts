@@ -1508,4 +1508,103 @@ describe('Bundle functionality', () => {
 			`)
 		})
 	})
+
+	describe('TSExportAssignment', () => {
+		test('export = ClassName', async () => {
+			createProject({
+				'src/index.ts': `
+					class MyService {
+						start(): void {}
+						stop(): void {}
+					}
+					export = MyService
+				`,
+			})
+
+			const files = await runGenerateDts(['src/index.ts'])
+
+			expect(files[0].dts).toMatchInlineSnapshot(`
+			  "declare class MyService {
+			  	start(): void;
+			  	stop(): void;
+			  }
+			  export { MyService as default };
+			  "
+			`)
+		})
+
+		test('export = ClassName with named exports alongside', async () => {
+			createProject({
+				'src/index.ts': `
+					export interface ServiceConfig {
+						port: number
+						host: string
+					}
+
+					export type ServiceStatus = 'running' | 'stopped'
+
+					class MyService {
+						config: ServiceConfig
+						constructor(config: ServiceConfig) {
+							this.config = config
+						}
+						getStatus(): ServiceStatus {
+							return 'running'
+						}
+					}
+					export = MyService
+				`,
+			})
+
+			const files = await runGenerateDts(['src/index.ts'])
+
+			expect(files[0].dts).toMatchInlineSnapshot(`
+			  "interface ServiceConfig {
+			  	port: number;
+			  	host: string;
+			  }
+			  type ServiceStatus = "running" | "stopped";
+			  declare class MyService {
+			  	config: ServiceConfig;
+			  	constructor(config: ServiceConfig);
+			  	getStatus(): ServiceStatus;
+			  }
+			  export { MyService as default, ServiceStatus, ServiceConfig };
+			  "
+			`)
+		})
+
+		test('Bundling: dependency with export = imported by entry', async () => {
+			createProject({
+				'src/lib.ts': `
+					class Logger {
+						log(message: string): void {}
+						error(message: string): void {}
+					}
+					export = Logger
+				`,
+				'src/index.ts': `
+					import Logger from './lib'
+
+					export function createLogger(): Logger {
+						return new Logger()
+					}
+
+					export { Logger }
+				`,
+			})
+
+			const files = await runGenerateDts(['src/index.ts'])
+
+			expect(files[0].dts).toMatchInlineSnapshot(`
+			  "declare class Logger {
+			  	log(message: string): void;
+			  	error(message: string): void;
+			  }
+			  declare function createLogger(): Logger;
+			  export { createLogger, Logger };
+			  "
+			`)
+		})
+	})
 })
