@@ -1,9 +1,9 @@
 
-					import Logger from './lib'
+					import type { Format, Config, Result } from './lib'
 
-					export function createLogger(): Logger {
-						return new Logger()
+					export function createConfig(format: Format): Config {
+						return { format, pretty: true }
 					}
 
-					export { Logger }
+					export type { Format, Result }
 				

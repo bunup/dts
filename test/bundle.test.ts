@@ -1606,5 +1606,114 @@ describe('Bundle functionality', () => {
 			  "
 			`)
 		})
+
+		test('Bundling: declare namespace with export = provides namespace members as named exports', async () => {
+			createProject({
+				'src/spinners.d.ts': `
+declare namespace spinners {
+	type SpinnerName = 'dots' | 'lines' | 'arrows'
+	interface Spinner {
+		readonly interval: number
+		readonly frames: string[]
+	}
+}
+declare const spinners: {
+	readonly [name in spinners.SpinnerName]: spinners.Spinner
+}
+export = spinners
+				`,
+				'src/index.ts': `
+					import type { SpinnerName } from './spinners'
+					export type AppSpinner = SpinnerName
+				`,
+			})
+
+			const files = await runGenerateDts(['src/index.ts'])
+
+			expect(files[0].dts).toMatchInlineSnapshot(`
+			  "type SpinnerName = "dots" | "lines" | "arrows";
+			  type AppSpinner = SpinnerName;
+			  export { AppSpinner };
+			  "
+			`)
+		})
+
+		test('Bundling: declare namespace with export = re-exports default', async () => {
+			createProject({
+				'src/spinners.d.ts': `
+declare namespace spinners {
+	type SpinnerName = 'dots' | 'lines' | 'arrows'
+	interface Spinner {
+		readonly interval: number
+		readonly frames: string[]
+	}
+}
+declare const spinners: {
+	readonly [name in spinners.SpinnerName]: spinners.Spinner
+}
+export = spinners
+				`,
+				'src/index.ts': `
+					import { SpinnerName } from './spinners'
+					export default SpinnerName
+				`,
+			})
+
+			const files = await runGenerateDts(['src/index.ts'])
+
+			expect(files[0].dts).toMatchInlineSnapshot(`
+			  "type SpinnerName = "dots" | "lines" | "arrows";
+			  export { SpinnerName as default };
+			  "
+			`)
+		})
+
+		test('Bundling: declare namespace with export = imports multiple members', async () => {
+			createProject({
+				'src/lib.d.ts': `
+declare namespace myLib {
+	type Format = 'json' | 'xml' | 'csv'
+	interface Config {
+		format: Format
+		pretty: boolean
+	}
+	interface Result {
+		data: string
+		format: Format
+	}
+}
+declare const myLib: {
+	parse(input: string, config: myLib.Config): myLib.Result
+}
+export = myLib
+				`,
+				'src/index.ts': `
+					import type { Format, Config, Result } from './lib'
+
+					export function createConfig(format: Format): Config {
+						return { format, pretty: true }
+					}
+
+					export type { Format, Result }
+				`,
+			})
+
+			const files = await runGenerateDts(['src/index.ts'])
+
+			expect(files[0].dts).toMatchInlineSnapshot(`
+			  "type Format = "json" | "xml" | "csv";
+			  interface Config {
+			  	format: Format;
+			  	pretty: boolean;
+			  }
+			  interface Result {
+			  	data: string;
+			  	format: Format;
+			  }
+			  declare function createConfig(format: Format): Config;
+			  export { createConfig, Result, Format };
+			  "
+			`)
+		})
 	})
 })

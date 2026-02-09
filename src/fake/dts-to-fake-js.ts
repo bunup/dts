@@ -35,7 +35,18 @@ export async function dtsToFakeJs(dtsContent: string): Promise<string> {
 	const referencedNames = new Set<string>()
 	const exportedNames = new Set<string>()
 	const staticImportedVars = new Set<string>()
+	const namespaceMembers = new Map<string, string[]>()
 	const result = []
+
+	const exportAssignmentNames = new Set<string>()
+	for (const stmt of parsed.program.body) {
+		if (
+			stmt.type === 'TSExportAssignment' &&
+			stmt.expression.type === 'Identifier'
+		) {
+			exportAssignmentNames.add(stmt.expression.name)
+		}
+	}
 
 	for (const name of getAllImportNames(parsed.program.body)) {
 		referencedNames.add(name)
@@ -92,11 +103,75 @@ export async function dtsToFakeJs(dtsContent: string): Promise<string> {
 		if (statement.type === 'TSExportAssignment') {
 			if (statement.expression.type === 'Identifier') {
 				result.push(`export { ${statement.expression.name} as default }`)
+				const members = namespaceMembers.get(statement.expression.name)
+				if (members) {
+					for (const member of members) {
+						if (!exportedNames.has(member)) {
+							result.push(`export { ${member} };`)
+							exportedNames.add(member)
+						}
+					}
+				}
 			} else if (statement.expression.start && statement.expression.end) {
 				result.push(
 					`export default ${dtsContent.substring(statement.expression.start, statement.expression.end)}`,
 				)
 			}
+			continue
+		}
+
+		if (
+			statement.type === 'TSModuleDeclaration' &&
+			statement.body?.type === 'TSModuleBlock' &&
+			statement.id?.type === 'Identifier'
+		) {
+			const memberNames: string[] = []
+			const shouldExportMembers =
+				hasExportModifier(statement, statementText) ||
+				exportAssignmentNames.has(name ?? '')
+
+			for (const member of statement.body.body) {
+				if (isNullOrUndefined(member.start) || isNullOrUndefined(member.end)) {
+					continue
+				}
+
+				const memberText = dtsContent.substring(member.start, member.end)
+				const memberName = getName(member, dtsContent)
+
+				if (!memberName) continue
+
+				memberNames.push(memberName)
+				referencedNames.add(memberName)
+
+				const leadingComment = getCommentText(member.leadingComments)
+				let memberTextWithComments = `${leadingComment ? `${leadingComment}\n` : ''}${memberText}`
+
+				if (hasExportModifier(member, memberText)) {
+					memberTextWithComments = removeExportSyntaxes(memberTextWithComments)
+				}
+
+				const { tokens, extras } = tokenizeText(
+					memberTextWithComments,
+					referencedNames,
+					staticImportedVars,
+				)
+
+				for (const extra of extras) {
+					result.push(extra)
+				}
+
+				result.push(`var ${memberName} = [${tokens.join(', ')}];`)
+
+				if (shouldExportMembers && !exportedNames.has(memberName)) {
+					result.push(`export { ${memberName} };`)
+					exportedNames.add(memberName)
+				}
+			}
+
+			if (name) {
+				namespaceMembers.set(name, memberNames)
+			}
+
 			continue
 		}
 
