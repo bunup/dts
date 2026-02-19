@@ -68,10 +68,10 @@ describe('Code Splitting Tests', () => {
 		expect(chunkResult.dts).toContain('type Status')
 
 		expect(clientResult?.dts).toContain(
-			`from "./${chunkResult.chunkFileName?.replace('.d.ts', '')}"`,
+			`from "./${chunkResult.chunkFileName?.replace('.d.ts', '.js')}"`,
 		)
 		expect(serverResult?.dts).toContain(
-			`from "./${chunkResult.chunkFileName?.replace('.d.ts', '')}"`,
+			`from "./${chunkResult.chunkFileName?.replace('.d.ts', '.js')}"`,
 		)
 	})
 
