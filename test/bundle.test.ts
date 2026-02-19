@@ -171,12 +171,12 @@ describe('Bundle functionality', () => {
 			const files = await runGenerateDts(['src/index.ts'])
 
 			expect(files[0].dts).toMatchInlineSnapshot(`
-			  "declare namespace exports_utils {
+			  "declare namespace utils {
 			  	export { test2, test };
 			  }
 			  declare function test(): string;
 			  declare const test2 = "test2";
-			  export { exports_utils as utils };
+			  export { utils };
 			  "
 			`)
 		})
@@ -251,12 +251,12 @@ describe('Bundle functionality', () => {
 			const files = await runGenerateDts(['src/index.ts'])
 
 			expect(files[0].dts).toMatchInlineSnapshot(`
-			  "declare namespace exports_utils {
+			  "declare namespace utils {
 			  	export { test2, test };
 			  }
 			  declare function test(): string;
 			  declare const test2 = "test2";
-			  export { exports_utils as default };
+			  export { utils as default };
 			  "
 			`)
 		})
@@ -287,12 +287,12 @@ describe('Bundle functionality', () => {
 			const files = await runGenerateDts(['src/index.ts'])
 
 			expect(files[0].dts).toMatchInlineSnapshot(`
-			  "declare namespace exports_string {
+			  "declare namespace str {
 			  	export { calculate, EMPTY };
 			  }
 			  declare function calculate(text: string): string;
 			  declare const EMPTY = "";
-			  type CalculateReturnType = ReturnType<typeof exports_string.calculate>;
+			  type CalculateReturnType = ReturnType<typeof str.calculate>;
 			  export { calculate, EMPTY, CalculateReturnType };
 			  "
 			`)
@@ -731,7 +731,7 @@ describe('Bundle functionality', () => {
 			const files = await runGenerateDts(['src/index.ts'])
 
 			expect(files[0].dts).toMatchInlineSnapshot(`
-			  "declare namespace exports_types {
+			  "declare namespace Types {
 			  	export { User2 as User, Post2 as Post, Permission2 as Permission };
 			  }
 			  interface User2 {
@@ -744,9 +744,9 @@ describe('Bundle functionality', () => {
 			  	author: User2;
 			  }
 			  type Permission2 = "read" | "write" | "admin";
-			  declare function createPost(author: exports_types.User): exports_types.Post;
-			  declare function hasPermission(user: exports_types.User, perm: exports_types.Permission): boolean;
-			  export { hasPermission, createPost, exports_types as Types };
+			  declare function createPost(author: Types.User): Types.Post;
+			  declare function hasPermission(user: Types.User, perm: Types.Permission): boolean;
+			  export { hasPermission, createPost, Types };
 			  "
 			`)
 		})

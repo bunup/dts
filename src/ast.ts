@@ -208,3 +208,32 @@ export function getAllImportNames(body: Statement[]): string[] {
 
 	return importNames
 }
+
+/**
+ * Extract namespace import aliases mapped to their module specifiers.
+ * e.g. `import * as schema from './schema'` → { alias: 'schema', specifier: './schema' }
+ */
+export function getNamespaceImports(
+	body: Statement[],
+): { alias: string; specifier: string }[] {
+	const result: { alias: string; specifier: string }[] = []
+
+	for (const statement of body) {
+		if (isImportDeclaration(statement)) {
+			const importDecl = statement as ImportDeclaration
+
+			if (importDecl.specifiers) {
+				for (const specifier of importDecl.specifiers) {
+					if (specifier.type === 'ImportNamespaceSpecifier') {
+						result.push({
+							alias: specifier.local.name,
+							specifier: importDecl.source.value,
+						})
+					}
+				}
+			}
+		}
+	}
+
+	return result
+}

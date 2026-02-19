@@ -1,9 +1,11 @@
 import { rm } from 'node:fs/promises'
 import path from 'node:path'
+import { parse } from '@babel/parser'
 import type { BunPlugin } from 'bun'
 import { isolatedDeclaration, type OxcError } from 'oxc-transform'
 import { resolveTsImportPath } from 'ts-import-resolver'
 
+import { getNamespaceImports } from './ast'
 import { EMPTY_EXPORT } from './constants'
 import { dtsToFakeJs, fakeJsToDts } from './fake'
 import type { IsolatedDeclarationError } from './isolated-decl-logger'
@@ -93,6 +95,9 @@ export async function generateDts(
 
 	let tsCompiledDist: string | undefined
 
+	// Map from Bun's mangled namespace name (e.g., "exports_schema") to original alias (e.g., "schema")
+	const namespaceAliasMap = new Map<string, string>()
+
 	try {
 		const fakeJsPlugin: BunPlugin = {
 			name: 'fake-js',
@@ -175,6 +180,35 @@ export async function generateDts(
 						}
 
 						if (declaration) {
+							// Collect namespace import alias mappings (import * as X from '...')
+							// so we can reverse Bun's exports_<stem> renaming later
+							if (!NODE_MODULES_RE.test(args.path)) {
+								try {
+									const parsed = parse(declaration, {
+										sourceType: 'module',
+										plugins: ['typescript'],
+									})
+									const nsImports = getNamespaceImports(parsed.program.body)
+									for (const nsImport of nsImports) {
+										const resolved = resolveTsImportPath({
+											importer: args.path,
+											path: nsImport.specifier,
+											cwd,
+											tsconfig: tsconfig.config,
+										})
+										if (resolved) {
+											const stem = path
+												.basename(resolved)
+												.replace(/\.[^.]+$/, '')
+											const mangledName = `exports_${stem}`
+											namespaceAliasMap.set(mangledName, nsImport.alias)
+										}
+									}
+								} catch {
+									// If parsing fails, skip alias collection for this file
+								}
+							}
+
 							fakeJsContent = await dtsToFakeJs(declaration)
 						} else {
 							fakeJsContent = EMPTY_EXPORT
@@ -255,7 +289,10 @@ export async function generateDts(
 		for (const output of outputs) {
 			const bundledFakeJsContent = await output.text()
 
-			const dtsContent = await fakeJsToDts(bundledFakeJsContent)
+			const dtsContent = await fakeJsToDts(
+				bundledFakeJsContent,
+				namespaceAliasMap,
+			)
 
 			const entrypoint =
 				output.kind === 'entry-point'

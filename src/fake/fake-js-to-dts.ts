@@ -14,7 +14,10 @@ import {
 import { isNullOrUndefined } from '../utils'
 import { unescapeNewlinesAndTabs } from './utils'
 
-export async function fakeJsToDts(fakeJsContent: string): Promise<string> {
+export async function fakeJsToDts(
+	fakeJsContent: string,
+	namespaceAliasMap?: Map<string, string>,
+): Promise<string> {
 	const parseResult = parse(fakeJsContent, {
 		sourceType: 'module',
 		attachComment: false,
@@ -41,13 +44,21 @@ export async function fakeJsToDts(fakeJsContent: string): Promise<string> {
 			isExportAllDeclaration(statement) ||
 			isReExportStatement(statement)
 		) {
+			if (namespaceAliasMap?.size && isReExportStatement(statement)) {
+				const fixedText = fixExportSpecifiers(statement, namespaceAliasMap)
+				if (fixedText) {
+					resultParts.push(fixedText)
+					continue
+				}
+			}
+
 			resultParts.push(statementText)
 
 			continue
 		}
 
 		if (statement.type === 'ExpressionStatement') {
-			const namespaceDecl = handleNamespace(statement)
+			const namespaceDecl = handleNamespace(statement, namespaceAliasMap)
 			if (namespaceDecl) {
 				resultParts.push(namespaceDecl)
 				continue
@@ -71,7 +82,10 @@ export async function fakeJsToDts(fakeJsContent: string): Promise<string> {
 				}
 
 				if (declaration.init?.type === 'ArrayExpression') {
-					const dtsContent = processTokenArray(declaration.init)
+					const dtsContent = processTokenArray(
+						declaration.init,
+						namespaceAliasMap,
+					)
 					if (dtsContent) {
 						resultParts.push(dtsContent)
 					}
@@ -134,7 +148,10 @@ function convertCallExpressionToString(node: t.CallExpression): string {
 	return `${callee}(${args})`
 }
 
-function processTokenArray(arrayLiteral: Node): string | null {
+function processTokenArray(
+	arrayLiteral: Node,
+	namespaceAliasMap?: Map<string, string>,
+): string | null {
 	if (arrayLiteral.type !== 'ArrayExpression') {
 		return null
 	}
@@ -143,7 +160,7 @@ function processTokenArray(arrayLiteral: Node): string | null {
 
 	for (const element of arrayLiteral.elements) {
 		if (!element) continue
-		const processed = processTokenElement(element)
+		const processed = processTokenElement(element, namespaceAliasMap)
 		if (processed !== null) {
 			tokens.push(processed)
 		}
@@ -154,13 +171,14 @@ function processTokenArray(arrayLiteral: Node): string | null {
 
 function processTokenElement(
 	element: SpreadElement | Expression,
+	namespaceAliasMap?: Map<string, string>,
 ): string | null {
 	if (element.type === 'StringLiteral' && typeof element.value === 'string') {
 		return unescapeNewlinesAndTabs(element.value)
 	}
 
 	if (element.type === 'Identifier') {
-		return element.name
+		return namespaceAliasMap?.get(element.name) ?? element.name
 	}
 
 	if (element.type === 'TemplateLiteral') {
@@ -169,7 +187,7 @@ function processTokenElement(
 		for (let i = 0; i < element.expressions.length; i++) {
 			const expr = element.expressions[i]
 			if (expr?.type === 'Identifier') {
-				parts.push(expr.name)
+				parts.push(namespaceAliasMap?.get(expr.name) ?? expr.name)
 			}
 			parts.push(
 				unescapeNewlinesAndTabs(element.quasis[i + 1]?.value?.raw || ''),
@@ -180,7 +198,10 @@ function processTokenElement(
 	return null
 }
 
-function handleNamespace(stmt: ExpressionStatement): string | null {
+function handleNamespace(
+	stmt: ExpressionStatement,
+	namespaceAliasMap?: Map<string, string>,
+): string | null {
 	const expr = stmt.expression
 
 	if (
@@ -194,7 +215,8 @@ function handleNamespace(stmt: ExpressionStatement): string | null {
 		return null
 	}
 
-	const namespaceName = expr.arguments[0].name
+	const rawName = expr.arguments[0].name
+	const namespaceName = namespaceAliasMap?.get(rawName) ?? rawName
 	const properties = expr.arguments[1].properties
 		.filter((prop) => prop.type === 'ObjectProperty')
 		.map((prop) => {
@@ -218,4 +240,58 @@ function handleNamespace(stmt: ExpressionStatement): string | null {
 	}
 
 	return `declare namespace ${namespaceName} {\n  export { ${properties.join(', ')} };\n}`
+}
+
+/**
+ * Fix export specifiers that reference Bun's mangled namespace names.
+ * e.g. `export { exports_utils as utils }` → `export { utils }`
+ * e.g. `export { exports_types as Types }` → `export { Types }`
+ */
+function fixExportSpecifiers(
+	statement: Node,
+	namespaceAliasMap: Map<string, string>,
+): string | null {
+	if (statement.type !== 'ExportNamedDeclaration') {
+		return null
+	}
+
+	const specifiers = statement.specifiers
+	if (!specifiers?.length) {
+		return null
+	}
+
+	let hasChange = false
+	const fixedParts: string[] = []
+
+	for (const spec of specifiers) {
+		if (spec.type !== 'ExportSpecifier') {
+			return null
+		}
+
+		const localName = spec.local.name
+		const exportedName =
+			spec.exported.type === 'Identifier'
+				? spec.exported.name
+				: spec.exported.value
+
+		const alias = namespaceAliasMap.get(localName)
+		if (alias) {
+			hasChange = true
+			fixedParts.push(
+				alias === exportedName ? exportedName : `${alias} as ${exportedName}`,
+			)
+		} else {
+			fixedParts.push(
+				localName === exportedName
+					? localName
+					: `${localName} as ${exportedName}`,
+			)
+		}
+	}
+
+	if (!hasChange) {
+		return null
+	}
+
+	return `export { ${fixedParts.join(', ')} };`
 }

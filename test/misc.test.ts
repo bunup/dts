@@ -1,7 +1,11 @@
-import { describe, expect, test } from 'bun:test'
-import { createProject, runGenerateDts } from './utils'
+import { beforeEach, describe, expect, test } from 'bun:test'
+import { cleanProjectDir, createProject, runGenerateDts } from './utils'
 
 describe('DTS Misc', () => {
+	beforeEach(() => {
+		cleanProjectDir()
+	})
+
 	test('should generate dts for typescript file with module declarations containing special characters', async () => {
 		createProject({
 			'src/index.ts': `
@@ -92,6 +96,48 @@ describe('DTS Misc', () => {
 		  	type Manager = Manager2;
 		  }
 		  export { Hello };
+		  "
+		`)
+	})
+
+	test('namespace import edge case 1', async () => {
+		createProject({
+			'src/index.ts': `
+				import * as schema from "./schema"
+
+				export function createClient() {
+				  const client = { schema }
+				  return client
+				}
+			`,
+			'src/schema.ts': `
+				export function check() {
+		  		console.log("check")
+				}
+			`,
+			'tsconfig.json': JSON.stringify({
+				compilerOptions: {
+					target: 'ESNext',
+					module: 'ESNext',
+					moduleResolution: 'bundler',
+					declaration: true,
+				},
+			}),
+		})
+
+		const files = await runGenerateDts(['src/index.ts'], {
+			inferTypes: true,
+		})
+
+		expect(files[0].dts).toMatchInlineSnapshot(`
+		  "declare namespace schema {
+		  	export { check };
+		  }
+		  declare function check(): void;
+		  declare function createClient(): {
+		  	schema: typeof schema;
+		  };
+		  export { createClient };
 		  "
 		`)
 	})
